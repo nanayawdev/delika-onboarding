@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
+import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
@@ -135,78 +134,53 @@ export default function RestaurantDashboard() {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col min-h-screen bg-gray-100">
-        <div className="flex-grow container mx-auto py-8 mt-12">
-          <Card className="w-full bg-white shadow-lg rounded-lg">
-            <CardHeader className="bg-gray-800 text-white p-4 rounded-t-lg">
-              <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold">Restaurant Dashboard</h1>
-                <div className="flex items-center gap-4">
-                  <div className="relative w-full md:w-64">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-                    <Input
-                      placeholder="Search restaurants..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-8 bg-white border border-gray-300"
+      <div className="flex flex-col min-h-screen bg-white mt-32">
+        <div className="flex-grow container mx-auto py-8">
+          <div className="mb-4 flex justify-between items-center">
+            <h1 className="text-2xl font-bold">Restaurant Dashboard</h1>
+            <div className="relative w-full md:w-64">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+              <Input
+                placeholder="Search restaurants..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 bg-white border border-gray-300"
+              />
+            </div>
+            <Button onClick={() => setIsAddModalOpen(true)} className="bg-blue-500 text-white hover:bg-blue-600">
+              Add Restaurant
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {filteredRestaurants.map((restaurant) => (
+              <Card 
+                key={restaurant.id} 
+                className="cursor-pointer hover:shadow-lg transition-shadow duration-200"
+                onClick={() => handleRestaurantClick(restaurant)}
+              >
+                <CardHeader className="flex items-center justify-center">
+                  {restaurant.restaurantLogo && (
+                    <img 
+                      src={restaurant.restaurantLogo.url} 
+                      alt={`${restaurant.restaurantName} logo`}
+                      className="w-24 h-24 object-cover rounded-full"
                     />
-                  </div>
-                  <Button onClick={() => setIsAddModalOpen(true)} className="bg-blue-500 text-white hover:bg-blue-600">
-                    Add Restaurant
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-black">Logo</TableHead>
-                    <TableHead className="text-black">Restaurant Name</TableHead>
-                    <TableHead className="text-black">Email</TableHead>
-                    <TableHead className="text-black">Location</TableHead>
-                    <TableHead className="text-black">Phone Number</TableHead>
-                    <TableHead className="text-black">Date Added</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRestaurants.map((restaurant) => (
-                    <TableRow 
-                      key={restaurant.id}
-                      className="cursor-pointer hover:bg-gray-50"
-                      onClick={() => handleRestaurantClick(restaurant)}
-                    >
-                      <TableCell>
-                        {restaurant.restaurantLogo && (
-                          <img 
-                            src={restaurant.restaurantLogo.url} 
-                            alt={`${restaurant.restaurantName} logo`}
-                            className="w-12 h-12 object-cover rounded-xl"
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell className="font-medium text-black">
-                        {restaurant.restaurantName}
-                      </TableCell>
-                      <TableCell className="text-black">{restaurant.restaurantEmail}</TableCell>
-                      <TableCell className="text-black">{restaurant.restaurantAddress}</TableCell>
-                      <TableCell className="text-black">{restaurant.restaurantPhoneNumber}</TableCell>
-                      <TableCell className="text-black">
-                        {new Date(restaurant.created_at).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {filteredRestaurants.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-4 text-black">
-                        {searchQuery ? 'No restaurants found matching your search' : 'No restaurants found'}
-                      </TableCell>
-                    </TableRow>
                   )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                </CardHeader>
+                <CardContent>
+                  <h2 className="font-semibold text-lg">{restaurant.restaurantName}</h2>
+                  <p className="text-gray-600">{restaurant.restaurantEmail}</p>
+                  <p className="text-gray-600">{restaurant.restaurantAddress}</p>
+                </CardContent>
+              </Card>
+            ))}
+            {filteredRestaurants.length === 0 && (
+              <div className="col-span-full text-center py-4 text-black">
+                {searchQuery ? 'No restaurants found matching your search' : 'No restaurants found'}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}
