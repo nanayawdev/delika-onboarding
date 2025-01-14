@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, LineChart, Line } from "recharts";
 import {
   Card,
   CardContent,

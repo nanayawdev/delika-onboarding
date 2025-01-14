@@ -55,7 +55,7 @@ export const BroadcastBanner: React.FC<BroadcastBannerProps> = ({ restaurantId }
   if (!broadcastMessage || isExpired) return null; // Hide the banner if expired
 
   return (
-    <div className="bg-blue-100 mb-4 rounded-full flex items-center p-4">
+    <div className="bg-blue-100 mb-4 rounded-xl flex items-center p-4">
       {imageUrl && (
         <img 
           src={imageUrl} 
@@ -65,7 +65,7 @@ export const BroadcastBanner: React.FC<BroadcastBannerProps> = ({ restaurantId }
       )}
       <div className="flex-1">
         {header && <h2 className="font-bold text-lg ml-4">{header}</h2>}
-        <p className="text-md ml-4">{broadcastMessage}</p>
+        <p className="text-sm ml-4">{broadcastMessage}</p>
       </div>
     </div>
   );

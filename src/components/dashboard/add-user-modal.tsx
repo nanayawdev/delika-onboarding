@@ -317,10 +317,10 @@ export function AddUserModal({ isOpen, onClose, onSuccess, restaurantId, branche
                   onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}
                   required
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white border border-gray-300 rounded">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white border border-gray-300 rounded">
                     {roles.map((role) => (
                       <SelectItem key={role} value={role}>
                         {role.split('_').map(word => 

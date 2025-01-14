@@ -33,7 +33,6 @@ import {
 import { EditBranchModal } from './edit-branch-modal'
 import krontivaLogo from '/krontivalogo.png' // Adjust the path as necessary
 import PurseIcon from '@/assets/icons/purse-stroke-rounded'
-import { BroadcastBanner } from './BroadcastBanner'
 
 interface Restaurant {
   id: string
@@ -456,7 +455,6 @@ export default function RestaurantDetail() {
       <div className="container mx-auto py-8 mt-36">
         {restaurant && (
           <>
-            <BroadcastBanner restaurantId={restaurant.id} />
             
             <div className="flex items-center justify-between mb-6">
               <Button

@@ -73,9 +73,9 @@ const BroadcastList: React.FC = () => {
           Create Broadcast
         </Button>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {broadcasts.map(broadcast => (
-          <Card key={broadcast.id} className="flex border border-gray-300 rounded-lg shadow-md h-full">
+          <Card key={broadcast.id} className="flex border border-gray-300 rounded-lg shadow-md w-full">
             {broadcast.Image && broadcast.Image.url && (
               <img 
                 src={broadcast.Image.url} 

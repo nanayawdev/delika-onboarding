@@ -55,11 +55,10 @@ export const BroadcastModal: React.FC<BroadcastModalProps> = ({ isOpen, onClose,
       formData.append('photo', photo);
     }
 
-    const restaurantData = selectedRestaurants.map(restaurantId => ({
-      restaurantId,
-    }));
-
-    formData.append('restaurants', JSON.stringify(restaurantData));
+    // Append each restaurantId individually
+    selectedRestaurants.forEach(restaurantId => {
+      formData.append('restaurants[]', JSON.stringify({ restaurantId }));
+    });
 
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/delikaquickshipper_broadcast_table`, {
