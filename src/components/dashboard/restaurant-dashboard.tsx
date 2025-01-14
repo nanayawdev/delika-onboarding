@@ -15,6 +15,8 @@ import { EditRestaurantModal } from './edit-restaurant-modal'
 import { toast } from 'sonner'
 import krontivaLogo from '/krontivalogo.png' // Adjust the path as necessary
 import { BroadcastModal } from './BroadcastModal'
+import ArrowRight01Icon from '@/assets/icons/arrow-right-01-stroke-rounded'
+import ArrowLeft01Icon from '@/assets/icons/arrow-left-01-stroke-rounded'
 
 interface Restaurant {
   id: string
@@ -44,11 +46,20 @@ export default function RestaurantDashboard() {
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null)
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false)
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const restaurantsPerPage = 12
+
   const filteredRestaurants = restaurants.filter(restaurant => 
     restaurant.restaurantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     restaurant.restaurantEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
     restaurant.restaurantAddress.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
+  // Calculate the current restaurants to display
+  const indexOfLastRestaurant = currentPage * restaurantsPerPage
+  const indexOfFirstRestaurant = indexOfLastRestaurant - restaurantsPerPage
+  const currentRestaurants = filteredRestaurants.slice(indexOfFirstRestaurant, indexOfLastRestaurant)
 
   const fetchData = async () => {
     try {
@@ -114,6 +125,20 @@ export default function RestaurantDashboard() {
     fetchBroadcastMessages();
   }
 
+  const totalPages = Math.ceil(filteredRestaurants.length / restaurantsPerPage)
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1)
+    }
+  }
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -167,7 +192,7 @@ export default function RestaurantDashboard() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filteredRestaurants.map((restaurant) => (
+            {currentRestaurants.map((restaurant) => (
               <Card 
                 key={restaurant.id} 
                 className="relative cursor-pointer transition duration-300 ease-in-out hover:grayscale"
@@ -187,11 +212,32 @@ export default function RestaurantDashboard() {
                 </div>
               </Card>
             ))}
-            {filteredRestaurants.length === 0 && (
+            {currentRestaurants.length === 0 && (
               <div className="col-span-full text-center py-4 text-black">
                 {searchQuery ? 'No restaurants found matching your search' : 'No restaurants found'}
               </div>
             )}
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="flex justify-end mt-4 space-x-2">
+            <Button 
+              onClick={handlePreviousPage} 
+              disabled={currentPage === 1} 
+              className={`bg-gray-900 text-white hover:bg-gray-800 rounded-md p-2 ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <ArrowLeft01Icon className="w-4 h-4 text-white" />
+            </Button>
+            <span className="self-center text-xs">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button 
+              onClick={handleNextPage} 
+              disabled={currentPage === totalPages} 
+              className={`bg-gray-900 text-white hover:bg-gray-800 rounded-md p-2 ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <ArrowRight01Icon className="w-4 h-4 text-white" />
+            </Button>
           </div>
         </div>
 
