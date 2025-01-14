@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { toast } from "sonner"
+import LocationInput from "@/components/ui/LocationInput"
+import { LocationData } from '../types/location'
 
 interface Branch {
   id: string
@@ -49,6 +51,16 @@ export function EditBranchModal({ isOpen, onClose, onSuccess, branch, restaurant
       })
     }
   }, [branch, restaurantId])
+
+  const handleLocationSelect = (location: LocationData) => {
+    setFormData(prev => ({
+      ...prev,
+      branchLocation: location.address,
+      branchCity: location.city || '',
+      branchLongitude: location.longitude.toString(),
+      branchLatitude: location.latitude.toString(),
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -101,11 +113,16 @@ export function EditBranchModal({ isOpen, onClose, onSuccess, branch, restaurant
 
           <div className="space-y-2">
             <Label htmlFor="branchLocation">Location</Label>
-            <Input
+            <LocationInput
               id="branchLocation"
-              value={formData.branchLocation}
-              onChange={(e) => setFormData(prev => ({ ...prev, branchLocation: e.target.value }))}
-              required
+              label="Branch Location"
+              onLocationSelect={handleLocationSelect}
+              prefillData={{
+                address: formData.branchLocation,
+                city: formData.branchCity,
+                longitude: parseFloat(formData.branchLongitude),
+                latitude: parseFloat(formData.branchLatitude),
+              }}
             />
           </div>
 
@@ -117,38 +134,6 @@ export function EditBranchModal({ isOpen, onClose, onSuccess, branch, restaurant
               onChange={(e) => setFormData(prev => ({ ...prev, branchPhoneNumber: e.target.value }))}
               required
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="branchCity">City</Label>
-            <Input
-              id="branchCity"
-              value={formData.branchCity}
-              onChange={(e) => setFormData(prev => ({ ...prev, branchCity: e.target.value }))}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="branchLongitude">Longitude</Label>
-              <Input
-                id="branchLongitude"
-                value={formData.branchLongitude}
-                onChange={(e) => setFormData(prev => ({ ...prev, branchLongitude: e.target.value }))}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="branchLatitude">Latitude</Label>
-              <Input
-                id="branchLatitude"
-                value={formData.branchLatitude}
-                onChange={(e) => setFormData(prev => ({ ...prev, branchLatitude: e.target.value }))}
-                required
-              />
-            </div>
           </div>
 
           <div className="flex justify-end gap-4">

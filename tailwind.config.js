@@ -10,6 +10,9 @@ module.exports = {
       fontFamily: {
         sans: ['DM Sans', 'sans-serif'],
       },
+      grayscale: {
+        100: '1',
+      },
     },
   },
   plugins: [],

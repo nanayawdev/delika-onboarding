@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -5,15 +7,17 @@ import { Label } from "@/components/ui/label"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog"
-import { toast } from "sonner"
 import { Sonner } from "@/components/ui/sonner"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { toast } from "sonner"
+import LocationInput from "@/components/ui/LocationInput";
+import { LocationData } from '../types/location'; // Ensure this type is defined
 
 interface AddBranchModalProps {
-  restaurantId: string
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
@@ -27,9 +31,9 @@ export function AddBranchModal({ restaurantId, isOpen, onClose, onSuccess }: Add
     branchName: '',
     branchLocation: '',
     branchPhoneNumber: '',
-    branchCity: '',
-    branchLongitude: '',
-    branchLatitude: '',
+    branchCity: '', // This will be populated from the location selection
+    branchLongitude: '', // This will be populated from the location selection
+    branchLatitude: '', // This will be populated from the location selection
   })
   const [isLoading, setIsLoading] = useState(false)
 
@@ -37,6 +41,16 @@ export function AddBranchModal({ restaurantId, isOpen, onClose, onSuccess }: Add
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
+
+  const handleLocationSelect = (location: LocationData) => {
+    setFormData(prev => ({
+      ...prev,
+      branchLocation: location.address,
+      branchCity: location.city || '', // Use city from location data
+      branchLongitude: location.longitude.toString(), // Convert to string for form data
+      branchLatitude: location.latitude.toString(), // Convert to string for form data
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -53,7 +67,7 @@ export function AddBranchModal({ restaurantId, isOpen, onClose, onSuccess }: Add
           },
           body: JSON.stringify({
             ...formData,
-            restaurantID: restaurantId,
+            restaurantID: restaurantId, // Ensure restaurantId is defined in your component
             delika_onboarding_id: localStorage.getItem('delikaOnboardingId')
           })
         }
@@ -86,11 +100,11 @@ export function AddBranchModal({ restaurantId, isOpen, onClose, onSuccess }: Add
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Add New Branch</DialogTitle>
             <DialogDescription>
-              Add a new branch location for your restaurant.
+              Enter the branch details below
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -105,17 +119,16 @@ export function AddBranchModal({ restaurantId, isOpen, onClose, onSuccess }: Add
                 required
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="branchLocation">Location</Label>
-              <Input
-                id="branchLocation"
-                name="branchLocation"
-                value={formData.branchLocation}
-                onChange={handleChange}
-                placeholder="Enter branch location"
-                required
+              <LocationInput
+                label="Branch Location"
+                onLocationSelect={handleLocationSelect}
+                prefillData={null}
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="branchPhoneNumber">Phone Number</Label>
               <Input
@@ -127,39 +140,7 @@ export function AddBranchModal({ restaurantId, isOpen, onClose, onSuccess }: Add
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="branchCity">City</Label>
-              <Input
-                id="branchCity"
-                name="branchCity"
-                value={formData.branchCity}
-                onChange={handleChange}
-                placeholder="Enter city"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="branchLongitude">Longitude</Label>
-                <Input
-                  id="branchLongitude"
-                  name="branchLongitude"
-                  value={formData.branchLongitude}
-                  onChange={handleChange}
-                  placeholder="Enter longitude"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="branchLatitude">Latitude</Label>
-                <Input
-                  id="branchLatitude"
-                  name="branchLatitude"
-                  value={formData.branchLatitude}
-                  onChange={handleChange}
-                  placeholder="Enter latitude"
-                />
-              </div>
-            </div>
+
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
@@ -171,7 +152,7 @@ export function AddBranchModal({ restaurantId, isOpen, onClose, onSuccess }: Add
           </form>
         </DialogContent>
       </Dialog>
-      <Sonner position="top-right" />
+      <Sonner />
     </>
   )
 } 

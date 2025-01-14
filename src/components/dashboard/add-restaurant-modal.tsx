@@ -14,6 +14,7 @@ import {
 import { Sonner } from "@/components/ui/sonner"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { toast } from "sonner"
+import LocationInput from "@/components/ui/LocationInput";
 
 interface RestaurantDetails {
   restaurantName: string
@@ -136,6 +137,13 @@ export function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRestaurant
     }
   }
 
+  const handleLocationSelect = (location: LocationData) => {
+    setRestaurantDetails(prev => ({
+      ...prev,
+      restaurantAddress: location.address
+    }));
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -174,12 +182,10 @@ export function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRestaurant
 
             <div className="space-y-2">
               <Label htmlFor="restaurantAddress">Location</Label>
-              <Input
-                id="restaurantAddress"
-                name="restaurantAddress"
-                value={restaurantDetails.restaurantAddress}
-                onChange={handleChange}
-                placeholder="Enter restaurant location"
+              <LocationInput
+                label="Restaurant Location"
+                onLocationSelect={handleLocationSelect}
+                prefillData={null}
               />
               {errors.restaurantAddress && <p className="text-sm text-red-500">{errors.restaurantAddress}</p>}
             </div>

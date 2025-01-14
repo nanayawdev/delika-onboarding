@@ -13,6 +13,8 @@ import { Sonner } from "@/components/ui/sonner"
 import { SignOutWarningModal } from './sign-out-warning-modal'
 import { EditRestaurantModal } from './edit-restaurant-modal'
 import { toast } from 'sonner'
+import krontivaLogo from '/krontivalogo.png' // Adjust the path as necessary
+import { BroadcastModal } from './BroadcastModal'
 
 interface Restaurant {
   id: string
@@ -40,6 +42,7 @@ export default function RestaurantDashboard() {
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null)
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false)
 
   const filteredRestaurants = restaurants.filter(restaurant => 
     restaurant.restaurantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -107,6 +110,10 @@ export default function RestaurantDashboard() {
     toast.success('You have been signed out.')
   }
 
+  const handleBroadcastSuccess = () => {
+    fetchBroadcastMessages();
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -134,45 +141,50 @@ export default function RestaurantDashboard() {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col min-h-screen bg-white mt-32">
-        <div className="flex-grow container mx-auto py-8">
-          <div className="mb-4 flex justify-between items-center">
-            <h1 className="text-2xl font-bold">Restaurant Dashboard</h1>
-            <div className="relative w-full md:w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-              <Input
-                placeholder="Search restaurants..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 bg-white border border-gray-300"
-              />
+      <div className="flex flex-col min-h-screen bg-gray-100 dark:bg-gray-900">
+        <div className="flex-grow container mx-auto py-8 mt-36">
+          <div className="mb-4 flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-black dark:text-white">
+              Restaurant Dashboard 
+              <span className="ml-2 inline-flex items-center justify-center w-5 h-5 bg-red-500 text-white rounded-full text-xs">
+                {restaurants.length}
+              </span>
+            </h1>
+            <div className="flex items-center gap-2">
+              <div className="relative w-full md:w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                <Input
+                  placeholder="Search restaurants..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 text-black dark:text-white bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-700"
+                />
+              </div>
+              <Button onClick={() => setIsAddModalOpen(true)} className="bg-gray-900 dark:bg-gray-800 text-white hover:bg-gray-900/80 dark:hover:bg-gray-700/80 border border-gray-700 dark:border-gray-600">
+                Add Restaurant
+              </Button>
             </div>
-            <Button onClick={() => setIsAddModalOpen(true)} className="bg-blue-500 text-white hover:bg-blue-600">
-              Add Restaurant
-            </Button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredRestaurants.map((restaurant) => (
               <Card 
                 key={restaurant.id} 
-                className="cursor-pointer hover:shadow-lg transition-shadow duration-200"
+                className="relative cursor-pointer transition duration-300 ease-in-out hover:grayscale"
                 onClick={() => handleRestaurantClick(restaurant)}
               >
-                <CardHeader className="flex items-center justify-center">
-                  {restaurant.restaurantLogo && (
-                    <img 
-                      src={restaurant.restaurantLogo.url} 
-                      alt={`${restaurant.restaurantName} logo`}
-                      className="w-24 h-24 object-cover rounded-full"
-                    />
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <h2 className="font-semibold text-lg">{restaurant.restaurantName}</h2>
-                  <p className="text-gray-600">{restaurant.restaurantEmail}</p>
-                  <p className="text-gray-600">{restaurant.restaurantAddress}</p>
-                </CardContent>
+                <img 
+                  src={restaurant.restaurantLogo.url} 
+                  alt={`${restaurant.restaurantName} logo`}
+                  className="w-full h-48 object-cover rounded-lg"
+                />
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center text-white text-center p-4 rounded-lg">
+                  <div>
+                    <h2 className="font-semibold text-lg">{restaurant.restaurantName}</h2>
+                    <p className="text-sm">{restaurant.restaurantEmail}</p>
+                    <p className="text-sm">{restaurant.restaurantAddress}</p>
+                  </div>
+                </div>
               </Card>
             ))}
             {filteredRestaurants.length === 0 && (
@@ -183,9 +195,10 @@ export default function RestaurantDashboard() {
           </div>
         </div>
 
-        {/* Footer */}
-        <footer className="bg-gray-800 text-white text-center py-4">
-          <p>Powered by Krontiva</p>
+        {/* Footer with Logo */}
+        <footer className="bg-gray-100 dark:bg-gray-900 text-black dark:text-white text-center py-4 flex items-center justify-center">
+          <p className="mr-2">powered by</p>
+          <img src={krontivaLogo} alt="Krontiva Logo" className="h-6" />
         </footer>
 
         <AddRestaurantModal 
@@ -213,6 +226,12 @@ export default function RestaurantDashboard() {
             setSelectedRestaurant(null)
           }}
           restaurant={selectedRestaurant}
+        />
+
+        <BroadcastModal 
+          isOpen={isBroadcastModalOpen}
+          onClose={() => setIsBroadcastModalOpen(false)}
+          onSuccess={handleBroadcastSuccess}
         />
       </div>
     </TooltipProvider>
