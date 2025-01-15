@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -188,11 +189,20 @@ export function AddUserModal({ isOpen, onClose, onSuccess, restaurantId, branche
     }
   }
 
+  // Add this check to filter out any empty roles
+  const validRoles = roles.filter(role => role && role.trim() !== '');
+
+  // Add this check to filter out any branches with empty ids
+  const validBranches = branches.filter(branch => branch && branch.id && branch.id.trim() !== '');
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
+          <DialogDescription>
+            Fill in the details to add a new user to the system.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -321,7 +331,7 @@ export function AddUserModal({ isOpen, onClose, onSuccess, restaurantId, branche
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border border-gray-300 rounded">
-                    {roles.map((role) => (
+                    {validRoles.map((role) => (
                       <SelectItem key={role} value={role}>
                         {role.split('_').map(word => 
                           word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
@@ -343,7 +353,7 @@ export function AddUserModal({ isOpen, onClose, onSuccess, restaurantId, branche
                     <SelectValue placeholder="Select branch" />
                   </SelectTrigger>
                   <SelectContent>
-                    {branches.map((branch) => (
+                    {validBranches.map((branch) => (
                       <SelectItem key={branch.id} value={branch.id}>
                         {branch.branchName}
                       </SelectItem>
