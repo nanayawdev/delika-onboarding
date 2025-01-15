@@ -509,6 +509,7 @@ export default function RestaurantDetail() {
       'Courier Name': order.courierName || 'Not assigned',
       'Courier Phone': order.courierPhoneNumber || '-',
       'Status': order.orderStatus,
+      'Products': order.products?.map(p => `${p.quantity}x ${p.name} (GH₵${p.price})`).join('; '),
       'Pickup': order.pickupName,
       'Dropoff': order.dropoffName,
       'Distance (km)': Number(order.deliveryDistance).toFixed(1),
@@ -549,10 +550,9 @@ export default function RestaurantDetail() {
               <Button
                 variant="ghost"
                 onClick={() => navigate('/dashboard')}
-                className="gap-2"
+                className="rounded-lg p-2 bg-gray-200 dark:bg-gray-800 hover:bg-gray-400 dark:hover:bg-gray-700"
               >
                 <ArrowLeft className="h-4 w-4 text-black dark:text-white" />
-                Back
               </Button>
 
               <Select
