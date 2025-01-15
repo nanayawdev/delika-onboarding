@@ -938,12 +938,7 @@ export default function RestaurantDetail() {
                               <CardTitle className="text-lg text-black dark:text-white">
                                 Orders for {selectedBranch.branchName}
                               </CardTitle>
-                              <Button
-                                onClick={() => exportToCSV(branchOrders)}
-                                className="bg-black text-white hover:bg-gray-800"
-                              >
-                                Export as CSV
-                              </Button>
+
                             </div>
                           </CardHeader>
                           <CardContent>
