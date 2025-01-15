@@ -584,6 +584,43 @@ export default function RestaurantDetail() {
     return Object.values(couriers);
   }, [filteredOrders, allUsers]);
 
+  // Add this helper function to get the latest order status
+  const getOrderProgress = (orders) => {
+    const statuses = {
+      Received: false,
+      Pickup: false,
+      OnTheWay: false,
+      Delivered: false
+    };
+
+    // Check the latest order status
+    const latestOrder = orders[orders.length - 1];
+    if (latestOrder) {
+      switch (latestOrder.orderStatus) {
+        case 'Delivered':
+          statuses.Delivered = true;
+          statuses.OnTheWay = true;
+          statuses.Pickup = true;
+          statuses.Received = true;
+          break;
+        case 'OnTheWay':
+          statuses.OnTheWay = true;
+          statuses.Pickup = true;
+          statuses.Received = true;
+          break;
+        case 'Pickup':
+          statuses.Pickup = true;
+          statuses.Received = true;
+          break;
+        case 'Received':
+          statuses.Received = true;
+          break;
+      }
+    }
+
+    return statuses;
+  };
+
   const CourierDetailsModal = ({ isOpen, onClose, courier }) => {
     if (!courier) return null;
 
@@ -975,6 +1012,38 @@ export default function RestaurantDetail() {
                       <CardContent>
                         <p className="text-sm text-gray-500">{courier.phoneNumber}</p>
                         <p className="text-sm text-gray-500 mt-1">{courier.orders.length} orders</p>
+                        
+                        {/* Progress Line */}
+                        <div className="mt-4 relative">
+                          {/* Progress Lines */}
+                          <div className="flex gap-1 h-1 w-full">
+                            {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete], index, array) => (
+                              <div 
+                                key={status}
+                                className={`flex-1 rounded-full ${
+                                  isComplete 
+                                    ? status === 'Received' ? 'bg-blue-500'
+                                      : status === 'Pickup' ? 'bg-yellow-500'
+                                      : status === 'OnTheWay' ? 'bg-purple-500'
+                                      : 'bg-green-500'
+                                    : 'bg-gray-200 dark:bg-gray-700'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          
+                          {/* Status Labels */}
+                          <div className="flex justify-between mt-2">
+                            {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete]) => (
+                              <span key={status} className="text-xs text-gray-500">
+                                {status === 'Received' ? 'Received' :
+                                 status === 'Pickup' ? 'Picked Up' :
+                                 status === 'OnTheWay' ? 'On Way' :
+                                 'Completed'}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
