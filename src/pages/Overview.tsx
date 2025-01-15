@@ -15,6 +15,10 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { User } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 const chartData = [
   { date: "2024-04-01", desktop: 222, mobile: 150 },
@@ -39,6 +43,59 @@ const chartConfig = {
     color: "hsl(var(--chart-2))",
   },
 } satisfies ChartConfig;
+
+interface Courier {
+  name: string;
+  phoneNumber: string;
+  image?: { url: string } | null;
+  orders: Order[];
+}
+
+interface Order {
+  id: string;
+  orderStatus: string;
+  orderNumber: string;
+  customerName: string;
+  deliveryPrice: number;
+  orderReceivedTime?: string;
+  orderPickedUpTime?: string;
+  orderOnmywayTime?: string;
+  orderCompletedTime?: string;
+}
+
+const getOrderProgress = (orders: Order[]) => {
+  const statuses = {
+    Received: false,
+    Pickup: false,
+    OnTheWay: false,
+    Delivered: false
+  };
+
+  const latestOrder = orders[orders.length - 1];
+  if (latestOrder) {
+    switch (latestOrder.orderStatus) {
+      case 'Delivered':
+        statuses.Delivered = true;
+        statuses.OnTheWay = true;
+        statuses.Pickup = true;
+        statuses.Received = true;
+        break;
+      case 'OnTheWay':
+        statuses.OnTheWay = true;
+        statuses.Pickup = true;
+        statuses.Received = true;
+        break;
+      case 'Pickup':
+        statuses.Pickup = true;
+        statuses.Received = true;
+        break;
+      case 'Received':
+        statuses.Received = true;
+        break;
+    }
+  }
+  return statuses;
+};
 
 export function VisitorChart() {
   const [activeChart, setActiveChart] = React.useState<keyof typeof chartConfig>("desktop");
@@ -149,6 +206,50 @@ const mockDeliveryData = [
 ];
 
 const Overview: React.FC = () => {
+  const [couriers, setCouriers] = useState<Courier[]>([]);
+  const [isCourierModalOpen, setIsCourierModalOpen] = useState<boolean>(false);
+  const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
+
+  useEffect(() => {
+    const fetchCouriers = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}${GET_ORDERS_ENDPOINT}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          }
+        });
+        
+        if (!response.ok) throw new Error('Failed to fetch orders');
+        
+        const orders = await response.json();
+        
+        // Group orders by courier
+        const courierOrders = orders.reduce((acc, order) => {
+          if (order.courierName) {
+            if (!acc[order.courierName]) {
+              acc[order.courierName] = {
+                name: order.courierName,
+                phoneNumber: order.courierPhoneNumber || 'N/A',
+                image: null, // You'll need to get this from your users API
+                orders: []
+              };
+            }
+            acc[order.courierName].orders.push(order);
+          }
+          return acc;
+        }, {});
+
+        setCouriers(Object.values(courierOrders));
+      } catch (error) {
+        console.error('Error fetching couriers:', error);
+      }
+    };
+
+    fetchCouriers();
+  }, []);
+
+  const getCouriersList = () => couriers;
+
   const totalSales = mockSalesData.reduce((acc, item) => acc + item.total, 0);
   const totalOrders = 100; // Mock total orders
   const averageOrderValue = totalSales / totalOrders;
@@ -280,6 +381,210 @@ const Overview: React.FC = () => {
             </ul>
           </CardContent>
         </Card>
+      </div>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Couriers Overview</CardTitle>
+          <CardDescription>Current status of all active couriers</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Courier</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Orders</TableHead>
+                <TableHead className="w-[300px]">Status</TableHead>
+                <TableHead>Latest Order</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {getCouriersList().map((courier) => (
+                <TableRow key={courier.name}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      {courier.image ? (
+                        <img 
+                          src={courier.image.url} 
+                          alt={courier.name}
+                          className="h-8 w-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                          <User className="h-4 w-4 text-gray-500" />
+                        </div>
+                      )}
+                      <span>{courier.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>{courier.phoneNumber}</TableCell>
+                  <TableCell>{courier.orders.length} orders</TableCell>
+                  <TableCell>
+                    <div className="flex gap-1 h-1 w-full">
+                      {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete]) => (
+                        <div 
+                          key={status}
+                          className={`flex-1 rounded-full ${
+                            isComplete 
+                              ? status === 'Received' ? 'bg-blue-500'
+                                : status === 'Pickup' ? 'bg-yellow-500'
+                                : status === 'OnTheWay' ? 'bg-purple-500'
+                                : 'bg-green-500'
+                              : 'bg-gray-200 dark:bg-gray-700'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {courier.orders.length > 0 ? (
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        courier.orders[courier.orders.length - 1].orderStatus === 'Delivered' 
+                          ? 'bg-green-100 text-green-700'
+                          : courier.orders[courier.orders.length - 1].orderStatus === 'OnTheWay'
+                          ? 'bg-purple-100 text-purple-700'
+                          : courier.orders[courier.orders.length - 1].orderStatus === 'Pickup'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {courier.orders[courier.orders.length - 1].orderStatus}
+                      </span>
+                    ) : (
+                      'No orders'
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <div className="mt-6">
+        <h2 className="text-lg font-semibold mb-4">Active Couriers</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {getCouriersList().map((courier) => (
+            <Card 
+              key={courier.name}
+              className="cursor-pointer hover:shadow-lg transition-shadow bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+              onClick={() => {
+                setSelectedCourier(courier);
+                setIsCourierModalOpen(true);
+              }}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="flex items-center gap-3">
+                  {courier.image ? (
+                    <img 
+                      src={courier.image.url} 
+                      alt={courier.name}
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                      <User className="h-4 w-4 text-gray-500" />
+                    </div>
+                  )}
+                  <CardTitle className="text-sm font-medium">{courier.name}</CardTitle>
+                </div>
+                <User className="h-4 w-4 text-gray-500" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-500">{courier.phoneNumber}</p>
+                <p className="text-sm text-gray-500 mt-1">{courier.orders.length} orders</p>
+                
+                {/* Progress Line */}
+                <div className="mt-4 relative">
+                  {/* Progress Lines */}
+                  <div className="flex gap-1 h-1 w-full">
+                    {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete]) => (
+                      <div 
+                        key={status}
+                        className={`flex-1 rounded-full ${
+                          isComplete 
+                            ? status === 'Assigned' ? 'bg-blue-500'
+                              : status === 'Pickup' ? 'bg-yellow-500'
+                              : status === 'OnTheWay' ? 'bg-purple-500'
+                              : 'bg-green-500'
+                            : 'bg-gray-200 dark:bg-gray-700'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* Status Labels */}
+                  <div className="flex justify-between mt-2">
+                    {Object.entries(getOrderProgress(courier.orders)).map(([status]) => (
+                      <span key={status} className="text-xs text-gray-500">
+                        {status === 'Assigned' ? 'Assigned' :
+                         status === 'Pickup' ? 'Picked Up' :
+                         status === 'OnTheWay' ? 'On Way' :
+                         'Completed'}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Courier Details Modal */}
+        <Dialog open={isCourierModalOpen} onOpenChange={() => {
+          setIsCourierModalOpen(false);
+          setSelectedCourier(null);
+        }}>
+          <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>{selectedCourier?.name}'s Deliveries</DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-auto mt-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Order #</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Delivery Price</TableHead>
+                    <TableHead>Pickup Location</TableHead>
+                    <TableHead>Dropoff Location</TableHead>
+                    <TableHead>Received</TableHead>
+                    <TableHead>Picked Up</TableHead>
+                    <TableHead>On The Way</TableHead>
+                    <TableHead>Completed</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedCourier?.orders.map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell>{order.orderNumber}</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-700' :
+                          order.orderStatus === 'ReadyForPickup' ? 'bg-blue-100 text-blue-700' :
+                          order.orderStatus === 'Cancelled' ? 'bg-red-100 text-red-700' :
+                          order.orderStatus === 'Assigned' ? 'bg-yellow-100 text-yellow-700' :
+                          order.orderStatus === 'Pickup' ? 'bg-orange-100 text-orange-700' :
+                          order.orderStatus === 'OnTheWay' ? 'bg-purple-100 text-purple-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {order.orderStatus}
+                        </span>
+                      </TableCell>
+                      <TableCell>GH₵{Number(order.deliveryPrice).toFixed(2)}</TableCell>
+                      <TableCell>{order.pickupName}</TableCell>
+                      <TableCell>{order.dropoffName}</TableCell>
+                      <TableCell>{order.orderReceivedTime ? new Date(order.orderReceivedTime).toLocaleTimeString() : '-'}</TableCell>
+                      <TableCell>{order.orderPickedUpTime ? new Date(order.orderPickedUpTime).toLocaleTimeString() : '-'}</TableCell>
+                      <TableCell>{order.orderOnmywayTime ? new Date(order.orderOnmywayTime).toLocaleTimeString() : '-'}</TableCell>
+                      <TableCell>{order.orderCompletedTime ? new Date(order.orderCompletedTime).toLocaleTimeString() : '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

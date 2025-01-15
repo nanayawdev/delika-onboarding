@@ -587,7 +587,7 @@ export default function RestaurantDetail() {
   // Add this helper function to get the latest order status
   const getOrderProgress = (orders) => {
     const statuses = {
-      Received: false,
+      Assigned: false,
       Pickup: false,
       OnTheWay: false,
       Delivered: false
@@ -601,19 +601,19 @@ export default function RestaurantDetail() {
           statuses.Delivered = true;
           statuses.OnTheWay = true;
           statuses.Pickup = true;
-          statuses.Received = true;
+          statuses.Assigned = true;
           break;
         case 'OnTheWay':
           statuses.OnTheWay = true;
           statuses.Pickup = true;
-          statuses.Received = true;
+          statuses.Assigned = true;
           break;
         case 'Pickup':
           statuses.Pickup = true;
-          statuses.Received = true;
+          statuses.Assigned = true;
           break;
-        case 'Received':
-          statuses.Received = true;
+        case 'Assigned':
+          statuses.Assigned = true;
           break;
       }
     }
@@ -1022,7 +1022,7 @@ export default function RestaurantDetail() {
                                 key={status}
                                 className={`flex-1 rounded-full ${
                                   isComplete 
-                                    ? status === 'Received' ? 'bg-blue-500'
+                                    ? status === 'Assigned' ? 'bg-blue-500'
                                       : status === 'Pickup' ? 'bg-yellow-500'
                                       : status === 'OnTheWay' ? 'bg-purple-500'
                                       : 'bg-green-500'
@@ -1036,7 +1036,7 @@ export default function RestaurantDetail() {
                           <div className="flex justify-between mt-2">
                             {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete]) => (
                               <span key={status} className="text-xs text-gray-500">
-                                {status === 'Received' ? 'Received' :
+                                {status === 'Assigned' ? 'Assigned' :
                                  status === 'Pickup' ? 'Picked Up' :
                                  status === 'OnTheWay' ? 'On Way' :
                                  'Completed'}
