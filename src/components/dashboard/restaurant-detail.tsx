@@ -163,6 +163,7 @@ export default function RestaurantDetail() {
   const [activeTab, setActiveTab] = useState('All')
   const [selectedCourier, setSelectedCourier] = useState(null);
   const [isCourierModalOpen, setIsCourierModalOpen] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
 
   const filteredOrders = useMemo(() => {
     return branchOrders.filter(order => {
@@ -533,13 +534,46 @@ export default function RestaurantDetail() {
     window.URL.revokeObjectURL(url)
   }
 
+  const fetchAllUsers = async () => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}${GET_USERS_ENDPOINT}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
+      }
+      
+      const data = await response.json();
+      setAllUsers(data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllUsers();
+  }, []);
+
   const getCouriersList = useMemo(() => {
     const couriers = filteredOrders.reduce((acc, order) => {
       if (order.courierName) {
         if (!acc[order.courierName]) {
+          // Find the courier in allUsers
+          const courierUser = allUsers.find(user => 
+            user.fullName === order.courierName || 
+            user.phoneNumber === order.courierPhoneNumber
+          );
+
           acc[order.courierName] = {
             name: order.courierName,
             phoneNumber: order.courierPhoneNumber,
+            image: courierUser?.image || null,
             orders: []
           };
         }
@@ -548,7 +582,7 @@ export default function RestaurantDetail() {
       return acc;
     }, {});
     return Object.values(couriers);
-  }, [filteredOrders]);
+  }, [filteredOrders, allUsers]);
 
   const CourierDetailsModal = ({ isOpen, onClose, courier }) => {
     if (!courier) return null;
@@ -922,7 +956,20 @@ export default function RestaurantDetail() {
                       }}
                     >
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{courier.name}</CardTitle>
+                        <div className="flex items-center gap-3">
+                          {courier.image ? (
+                            <img 
+                              src={courier.image.url} 
+                              alt={courier.name}
+                              className="h-8 w-8 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                              <User className="h-4 w-4 text-gray-500" />
+                            </div>
+                          )}
+                          <CardTitle className="text-sm font-medium">{courier.name}</CardTitle>
+                        </div>
                         <User className="h-4 w-4 text-gray-500" />
                       </CardHeader>
                       <CardContent>
