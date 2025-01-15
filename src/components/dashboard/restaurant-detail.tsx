@@ -1,11 +1,11 @@
 'use client'
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, Share2, MessageSquare, PenSquare, Building2, TrendingUp, Building, DollarSign, RefreshCcw, Users, UsersIcon, MoreHorizontal, Pencil, Trash2, User } from "lucide-react"
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, Share2, MessageSquare, PenSquare, Building2, TrendingUp, Building, DollarSign, RefreshCcw, Users, UsersIcon, MoreHorizontal, Pencil, Trash2, User, Search } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { EditRestaurantModal } from './edit-restaurant-modal'
@@ -33,7 +33,9 @@ import {
 import { EditBranchModal } from './edit-branch-modal'
 import krontivaLogo from '/krontivalogo.png' // Adjust the path as necessary
 import PurseIcon from '@/assets/icons/purse-stroke-rounded'
-
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import Papa from 'papaparse'
 interface Restaurant {
   id: string
   restaurantName: string
@@ -156,6 +158,28 @@ export default function RestaurantDetail() {
   const [branchToEdit, setBranchToEdit] = useState<Branch | null>(null)
   const [isDeleteBranchModalOpen, setIsDeleteBranchModalOpen] = useState(false)
   const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeTab, setActiveTab] = useState('All')
+
+  const filteredOrders = useMemo(() => {
+    return branchOrders.filter(order => {
+      const searchLower = searchQuery.toLowerCase()
+      
+      const matchesSearch = 
+        String(order.orderNumber || '').toLowerCase().includes(searchLower) ||
+        String(order.customerName || '').toLowerCase().includes(searchLower) ||
+        String(order.customerPhoneNumber || '').toLowerCase().includes(searchLower) ||
+        String(order.courierName || '').toLowerCase().includes(searchLower) ||
+        String(order.courierPhoneNumber || '').toLowerCase().includes(searchLower) ||
+        String(order.pickupName || '').toLowerCase().includes(searchLower) ||
+        String(order.dropoffName || '').toLowerCase().includes(searchLower)
+
+      const matchesTab = activeTab === 'All' || order.orderStatus === activeTab
+
+      return matchesSearch && matchesTab
+    })
+  }, [branchOrders, searchQuery, activeTab])
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -440,6 +464,72 @@ export default function RestaurantDetail() {
     URL.revokeObjectURL(url); // Clean up
   };
 
+  // Fetch orders from the API
+  const fetchOrders = async () => {
+    try {
+      setIsLoadingOrders(true)
+      setOrderError(null)
+      
+      const response = await fetch(
+        `${API_BASE_URL}${GET_ORDERS_ENDPOINT}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          method: 'GET'
+        }
+      )
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch orders: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      setOrders(data)
+    } catch (error) {
+      console.error('Error fetching orders:', error)
+      setOrderError('Failed to load orders. Please try again.')
+    } finally {
+      setIsLoadingOrders(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  // Update the export function to use filtered data
+  const handleExport = () => {
+    const csvData = filteredOrders.map(order => ({
+      'Order Number': order.orderNumber,
+      'Customer Name': order.customerName,
+      'Customer Phone': order.customerPhoneNumber,
+      'Courier Name': order.courierName || 'Not assigned',
+      'Courier Phone': order.courierPhoneNumber || '-',
+      'Status': order.orderStatus,
+      'Pickup': order.pickupName,
+      'Dropoff': order.dropoffName,
+      'Distance (km)': Number(order.deliveryDistance).toFixed(1),
+      'Delivery Price (GH₵)': Number(order.deliveryPrice).toFixed(2),
+      'Total Price (GH₵)': Number(order.totalPrice).toFixed(2),
+      'Order Date': new Date(order.orderDate).toLocaleDateString(),
+      'Created At': new Date(order.created_at).toLocaleTimeString()
+    }))
+
+    const csv = Papa.unparse(csvData)
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `orders-${new Date().toISOString()}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  }
+
   if (!restaurant) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -451,8 +541,8 @@ export default function RestaurantDetail() {
   console.log('Restaurant ID:', restaurant.id); // Check if the ID is valid
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100 dark:bg-gray-900">
-      <div className="container mx-auto py-8 mt-36">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+      <div className="container mx-auto py-8">
         {restaurant && (
           <>
             
@@ -877,92 +967,119 @@ export default function RestaurantDetail() {
                                 <p className="text-gray-500 dark:text-white">No orders found for this branch</p>
                               </div>
                             ) : (
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>Order #</TableHead>
-                                    <TableHead>Customer</TableHead>
-                                    <TableHead>Courier</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Payment</TableHead>
-                                    <TableHead>Items</TableHead>
-                                    <TableHead>Delivery</TableHead>
-                                    <TableHead>Total</TableHead>
-                                    <TableHead>Date</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {branchOrders.map((order) => (
-                                    <TableRow key={order.id}>
-                                      <TableCell className="font-medium">
-                                        {order.orderNumber}
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="space-y-1">
-                                          <p className="font-medium">{order.customerName}</p>
-                                          <p className="text-sm text-gray-500">{order.customerPhoneNumber}</p>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="space-y-1">
-                                          <p className="font-medium">{order.courierName || 'Not assigned'}</p>
-                                          <p className="text-sm text-gray-500">{order.courierPhoneNumber || '-'}</p>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <span className={`px-2 py-1 rounded-full text-xs ${
-                                          order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-700' :
-                                          order.orderStatus === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                                          'bg-gray-100 text-gray-700'
-                                        }`}>
-                                          {order.orderStatus}
-                                        </span>
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="space-y-1">
-                                          <span className={`px-2 py-1 rounded-full text-xs ${
-                                            order.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                                          }`}>
-                                            {order.paymentStatus}
-                                          </span>
-                                          <p className="text-xs text-gray-500">
-                                            {order.payNow ? 'Paid Now' : 'Pay Later'}
-                                          </p>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="space-y-1">
-                                          {order.products.map((product, index) => (
-                                            <div key={index} className="text-sm">
-                                              {product.quantity}x {product.name} (GH₵{Number(product.price).toFixed(2)})
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="space-y-1">
-                                          <p className="text-sm">From: {order.pickupName}</p>
-                                          <p className="text-sm">To: {order.dropoffName}</p>
-                                          <p className="text-xs text-gray-500">
-                                            {Number(order.deliveryDistance).toFixed(1)}km • GH₵{Number(order.deliveryPrice).toFixed(2)}
-                                          </p>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="font-medium">
-                                        GH₵{Number(order.totalPrice).toFixed(2)}
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="space-y-1">
-                                          <p className="text-sm">{new Date(order.orderDate).toLocaleDateString()}</p>
-                                          <p className="text-xs text-gray-500">
-                                            {new Date(order.created_at).toLocaleTimeString()}
-                                          </p>
-                                        </div>
-                                      </TableCell>
+                              <div className="mb-6 space-y-4">
+                                {/* Search, Export, and Tabs Section */}
+                                <div className="mb-6 space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <div className="relative w-full md:w-96">
+                                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                      <Input
+                                        placeholder="Search orders..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="pl-8 text-black dark:text-white bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-700"
+                                      />
+                                    </div>
+                                    <Button
+                                      onClick={handleExport}
+                                      className="bg-gray-900 dark:bg-gray-800 text-white hover:bg-gray-900/80 dark:hover:bg-gray-700/80 border border-gray-700 dark:border-gray-600"
+                                    >
+                                      Export Orders
+                                    </Button>
+                                  </div>
+
+                                  <Tabs defaultValue="All" value={activeTab} onValueChange={setActiveTab}>
+                                    <TabsList className="grid grid-cols-7 w-full">
+                                      <TabsTrigger value="All">All</TabsTrigger>
+                                      <TabsTrigger value="Delivered">Delivered</TabsTrigger>
+                                      <TabsTrigger value="ReadyForPickup">Ready</TabsTrigger>
+                                      <TabsTrigger value="Cancelled">Cancelled</TabsTrigger>
+                                      <TabsTrigger value="Assigned">Assigned</TabsTrigger>
+                                      <TabsTrigger value="Pickup">Pickup</TabsTrigger>
+                                      <TabsTrigger value="OnTheWay">On The Way</TabsTrigger>
+                                    </TabsList>
+                                  </Tabs>
+                                </div>
+
+                                {/* Table Section */}
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Order #</TableHead>
+                                      <TableHead>Customer</TableHead>
+                                      <TableHead>Courier</TableHead>
+                                      <TableHead>Status</TableHead>
+                                      <TableHead>Products</TableHead>
+                                      <TableHead>Delivery Details</TableHead>
+                                      <TableHead>Total</TableHead>
+                                      <TableHead>Date</TableHead>
                                     </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {filteredOrders.map((order) => (
+                                      <TableRow key={order.id}>
+                                        <TableCell className="font-medium">
+                                          {order.orderNumber}
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="space-y-1">
+                                            <p className="font-medium">{order.customerName}</p>
+                                            <p className="text-sm text-gray-500">{order.customerPhoneNumber}</p>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="space-y-1">
+                                            <p className="font-medium">{order.courierName || 'Not assigned'}</p>
+                                            <p className="text-sm text-gray-500">{order.courierPhoneNumber || '-'}</p>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          <span className={`px-2 py-1 rounded-full text-xs ${
+                                            order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-700' :
+                                            order.orderStatus === 'ReadyForPickup' ? 'bg-blue-100 text-blue-700' :
+                                            order.orderStatus === 'Cancelled' ? 'bg-red-100 text-red-700' :
+                                            order.orderStatus === 'Assigned' ? 'bg-yellow-100 text-yellow-700' :
+                                            order.orderStatus === 'Pickup' ? 'bg-orange-100 text-orange-700' :
+                                            order.orderStatus === 'OnTheWay' ? 'bg-purple-100 text-purple-700' :
+                                            'bg-gray-100 text-gray-700'
+                                          }`}>
+                                            {order.orderStatus}
+                                          </span>
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="space-y-1">
+                                            {order.products?.map((product, index) => (
+                                              <div key={index} className="text-sm">
+                                                {product.quantity}x {product.name} - GH₵{Number(product.price).toFixed(2)}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="space-y-1">
+                                            <p className="text-sm">From: {order.pickupName}</p>
+                                            <p className="text-sm">To: {order.dropoffName}</p>
+                                            <p className="text-xs text-gray-500">
+                                              {Number(order.deliveryDistance).toFixed(1)}km • GH₵{Number(order.deliveryPrice).toFixed(2)}
+                                            </p>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="font-medium">
+                                          GH₵{Number(order.totalPrice).toFixed(2)}
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="space-y-1">
+                                            <p className="text-sm">{new Date(order.orderDate).toLocaleDateString()}</p>
+                                            <p className="text-xs text-gray-500">
+                                              {new Date(order.created_at).toLocaleTimeString()}
+                                            </p>
+                                          </div>
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
                             )}
                           </CardContent>
                         </Card>
