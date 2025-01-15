@@ -538,7 +538,6 @@ export default function RestaurantDetail() {
     )
   }
 
-  console.log('Restaurant ID:', restaurant.id); // Check if the ID is valid
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -546,7 +545,7 @@ export default function RestaurantDetail() {
         {restaurant && (
           <>
             
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6 mt-40">
               <Button
                 variant="ghost"
                 onClick={() => navigate('/dashboard')}
@@ -975,25 +974,31 @@ export default function RestaurantDetail() {
                                         className="pl-8 text-black dark:text-white bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-700"
                                       />
                                     </div>
-                                    <Button
-                                      onClick={handleExport}
-                                      className="bg-gray-900 dark:bg-gray-800 text-white hover:bg-gray-900/80 dark:hover:bg-gray-700/80 border border-gray-700 dark:border-gray-600"
-                                    >
-                                      Export Orders
-                                    </Button>
-                                  </div>
 
-                                  <Tabs defaultValue="All" value={activeTab} onValueChange={setActiveTab}>
-                                    <TabsList className="grid grid-cols-7 w-full">
-                                      <TabsTrigger value="All">All</TabsTrigger>
-                                      <TabsTrigger value="Delivered">Delivered</TabsTrigger>
-                                      <TabsTrigger value="ReadyForPickup">Ready</TabsTrigger>
-                                      <TabsTrigger value="Cancelled">Cancelled</TabsTrigger>
-                                      <TabsTrigger value="Assigned">Assigned</TabsTrigger>
-                                      <TabsTrigger value="Pickup">Pickup</TabsTrigger>
-                                      <TabsTrigger value="OnTheWay">On The Way</TabsTrigger>
-                                    </TabsList>
-                                  </Tabs>
+                                    <div className="flex items-center gap-4">
+                                      <Select value={activeTab} onValueChange={setActiveTab}>
+                                        <SelectTrigger className="w-[180px] bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                                          <SelectValue placeholder="Filter by status" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                                          <SelectItem value="All" className="hover:bg-gray-100 dark:hover:bg-gray-700">All Orders</SelectItem>
+                                          <SelectItem value="Delivered" className="hover:bg-gray-100 dark:hover:bg-gray-700">Delivered</SelectItem>
+                                          <SelectItem value="ReadyForPickup" className="hover:bg-gray-100 dark:hover:bg-gray-700">Ready for Pickup</SelectItem>
+                                          <SelectItem value="Cancelled" className="hover:bg-gray-100 dark:hover:bg-gray-700">Cancelled</SelectItem>
+                                          <SelectItem value="Assigned" className="hover:bg-gray-100 dark:hover:bg-gray-700">Assigned</SelectItem>
+                                          <SelectItem value="Pickup" className="hover:bg-gray-100 dark:hover:bg-gray-700">Pickup</SelectItem>
+                                          <SelectItem value="OnTheWay" className="hover:bg-gray-100 dark:hover:bg-gray-700">On The Way</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+
+                                      <Button
+                                        onClick={handleExport}
+                                        className="bg-gray-900 dark:bg-gray-800 text-white hover:bg-gray-900/80 dark:hover:bg-gray-700/80 border border-gray-700 dark:border-gray-600"
+                                      >
+                                        Export Orders
+                                      </Button>
+                                    </div>
+                                  </div>
                                 </div>
 
                                 {/* Table Section */}
