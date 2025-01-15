@@ -461,7 +461,7 @@ const Overview: React.FC = () => {
         </CardContent>
       </Card>
 
-      <div className="mt-6">
+      <div className="mb-8">
         <h2 className="text-lg font-semibold mb-4">Active Couriers</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {getCouriersList().map((courier) => (

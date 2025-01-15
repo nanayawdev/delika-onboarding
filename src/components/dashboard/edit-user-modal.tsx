@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -250,11 +251,17 @@ export function EditUserModal({
     }
   };
 
+  const validRoles = roles.filter(role => role && role.trim() !== '');
+  const validBranches = branches.filter(branch => branch && branch.id && branch.id.trim() !== '');
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <DialogTitle>Edit User</DialogTitle>
+          <DialogDescription>
+            Make changes to the user's information here.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -401,7 +408,7 @@ export function EditUserModal({
                         <LoadingSpinner className="h-4 w-4" />
                       </div>
                     ) : (
-                      roles.map((role) => (
+                      validRoles.map((role) => (
                         <SelectItem 
                           key={role} 
                           value={role}
@@ -428,7 +435,7 @@ export function EditUserModal({
                     <SelectValue placeholder="Select branch" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border shadow-md">
-                    {branches.map((branch) => (
+                    {validBranches.map((branch) => (
                       <SelectItem 
                         key={branch.id} 
                         value={branch.id}
