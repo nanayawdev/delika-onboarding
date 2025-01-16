@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, LineChart, Line } from "recharts";
 import {
   Card,
   CardContent,
@@ -9,47 +8,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
 import { User } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { Sonner } from "@/components/ui/sonner"
-import { DollarSign } from "lucide-react"
+import { DollarSign, Star, MessageCircle, TrendingUp, Award, MapPin } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import PurseIcon from "@/assets/icons/purse-stroke-rounded";
+import { Badge } from "@/components/ui/badge";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const GET_ORDERS_ENDPOINT = import.meta.env.VITE_GET_ORDERS_ENDPOINT;
-
-const chartData = [
-  { date: "2024-04-01", desktop: 222, mobile: 150 },
-  { date: "2024-04-02", desktop: 97, mobile: 180 },
-  { date: "2024-04-03", desktop: 167, mobile: 120 },
-  { date: "2024-04-04", desktop: 242, mobile: 260 },
-  { date: "2024-04-05", desktop: 373, mobile: 290 },
-  // ... (other data points)
-  { date: "2024-06-30", desktop: 446, mobile: 400 },
-];
-
-const chartConfig = {
-  views: {
-    label: "Page Views",
-  },
-  desktop: {
-    label: "Desktop",
-    color: "hsl(var(--chart-1))",
-  },
-  mobile: {
-    label: "Mobile",
-    color: "hsl(var(--chart-2))",
-  },
-} satisfies ChartConfig;
 
 interface Courier {
   name: string;
@@ -117,112 +89,35 @@ const calculateDeliverySales = (orders: Order[]) => {
   }, 0);
 };
 
-export function VisitorChart() {
-  const [activeChart, setActiveChart] = React.useState<keyof typeof chartConfig>("desktop");
-
-  const total = React.useMemo(
-    () => ({
-      desktop: chartData.reduce((acc, curr) => acc + curr.desktop, 0),
-      mobile: chartData.reduce((acc, curr) => acc + curr.mobile, 0),
-    }),
-    []
-  );
-
-  return (
-    <Card className="mb-8">
-      <CardHeader className="flex flex-col items-stretch space-y-0 border-b p-0 sm:flex-row">
-        <div className="flex flex-1 flex-col justify-center gap-1 px-6 py-5 sm:py-6">
-          <CardTitle>Bar Chart - Interactive</CardTitle>
-          <CardDescription>
-            Showing total visitors for the last 3 months
-          </CardDescription>
-        </div>
-        <div className="flex">
-          {["desktop", "mobile"].map((key) => {
-            const chart = key as keyof typeof chartConfig;
-            return (
-              <button
-                key={chart}
-                data-active={activeChart === chart}
-                className="relative z-30 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l data-[active=true]:bg-muted/50 sm:border-l sm:border-t-0 sm:px-8 sm:py-6"
-                onClick={() => setActiveChart(chart)}
-              >
-                <span className="text-xs text-muted-foreground">
-                  {chartConfig[chart].label}
-                </span>
-                <span className="text-lg font-bold leading-none sm:text-3xl">
-                  {total[key as keyof typeof total].toLocaleString()}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </CardHeader>
-      <CardContent className="px-2 sm:p-6">
-        <ChartContainer
-          config={chartConfig}
-          className="aspect-auto h-[250px] w-full"
-        >
-          <BarChart
-            accessibilityLayer
-            data={chartData}
-            margin={{
-              left: 12,
-              right: 12,
-            }}
-          >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              minTickGap={32}
-              tickFormatter={(value) => {
-                const date = new Date(value);
-                return date.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                });
-              }}
-            />
-            <ChartTooltip
-              content={
-                <ChartTooltipContent
-                  className="w-[150px]"
-                  nameKey="views"
-                  labelFormatter={(value) => {
-                    return new Date(value).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    });
-                  }}
-                />
-              }
-            />
-            <Bar dataKey={activeChart} fill={`var(--color-${activeChart})`} />
-          </BarChart>
-        </ChartContainer>
-      </CardContent>
-    </Card>
-  );
-}
-
-const mockSalesData = [
-  { date: '2023-10-01', total: 120 },
-  { date: '2023-10-02', total: 200 },
-  { date: '2023-10-03', total: 150 },
-  { date: '2023-10-04', total: 300 },
-  { date: '2023-10-05', total: 250 },
+const earningsData = [
+  { month: 'Jan', earnings: 5000 },
+  { month: 'Feb', earnings: 7500 },
+  { month: 'Mar', earnings: 6000 },
+  { month: 'Apr', earnings: 8000 },
+  { month: 'May', earnings: 9500 },
 ];
 
-const mockDeliveryData = [
-  { date: '2023-10-01', total: 10 },
-  { date: '2023-10-02', total: 15 },
-  { date: '2023-10-03', total: 12 },
-  { date: '2023-10-04', total: 20 },
-  { date: '2023-10-05', total: 18 },
+const topSalesData = [
+  { day: 'Mon', sales: 100 },
+  { day: 'Tue', sales: 200 },
+  { day: 'Wed', sales: 150 },
+  { day: 'Thu', sales: 250 },
+  { day: 'Fri', sales: 300 },
+];
+
+const bestCourierData = [
+  { week: 'Week 1', deliveries: 50 },
+  { week: 'Week 2', deliveries: 75 },
+  { week: 'Week 3', deliveries: 60 },
+  { week: 'Week 4', deliveries: 90 },
+];
+
+const mostDistanceData = [
+  { day: 'Mon', distance: 10 },
+  { day: 'Tue', distance: 15 },
+  { day: 'Wed', distance: 12 },
+  { day: 'Thu', distance: 18 },
+  { day: 'Fri', distance: 20 },
 ];
 
 export default function Overview() {
@@ -284,8 +179,8 @@ export default function Overview() {
   return (
     <div className="container mx-auto p-6 mt-40">
       {/* Active Couriers Section */}
-      <div className="mb-8">
-        <h2 className="text-lg font-semibold mb-4">Active Couriers</h2>
+      <div className="mb-32">
+        <h2 className="text-2xl font-bold mb-6">Active Couriers</h2>
         {isLoading ? (
           <div className="flex justify-center items-center h-32">
             <LoadingSpinner />
@@ -293,7 +188,7 @@ export default function Overview() {
         ) : error ? (
           <div className="text-center text-red-500">{error}</div>
         ) : couriers.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {couriers.map((courier) => (
               <Card 
                 key={courier.name}
@@ -303,35 +198,39 @@ export default function Overview() {
                   setIsCourierModalOpen(true);
                 }}
               >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <div className="flex items-center gap-3">
+                <CardHeader className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
                     {courier.image ? (
                       <img 
                         src={courier.image.url} 
                         alt={courier.name}
-                        className="h-8 w-8 rounded-full object-cover"
+                        className="h-12 w-12 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                        <User className="h-4 w-4 text-gray-500" />
+                      <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                        <User className="h-6 w-6 text-gray-500" />
                       </div>
                     )}
-                    <CardTitle className="text-sm font-medium">{courier.name}</CardTitle>
+                    <div>
+                      <CardTitle className="text-lg font-semibold">{courier.name}</CardTitle>
+                      <p className="text-sm text-gray-500">{courier.phoneNumber}</p>
+                    </div>
                   </div>
-                  <User className="h-4 w-4 text-gray-500" />
+                  <Badge variant="outline" className="text-sm">
+                    {courier.orders.length} orders
+                  </Badge>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-500">{courier.phoneNumber}</p>
-                  <div className="flex justify-between items-center mt-1">
-                    <p className="text-sm text-gray-500">{courier.orders.length} orders</p>
-                    <p className="text-sm font-medium text-green-600">
+                <CardContent className="mt-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-gray-500">Total Earnings</p>
+                    <p className="text-lg font-semibold text-green-600">
                       GH₵{calculateTotalDeliveryPrice(courier.orders).toFixed(2)}
                     </p>
                   </div>
                   
                   {/* Progress Line */}
                   <div className="mt-4 relative">
-                    <div className="flex gap-1 h-1 w-full">
+                    <div className="flex gap-1 h-2 w-full rounded-full bg-gray-200">
                       {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete]) => (
                         <div 
                           key={status}
@@ -341,7 +240,7 @@ export default function Overview() {
                                 : status === 'Pickup' ? 'bg-yellow-500'
                                 : status === 'OnTheWay' ? 'bg-purple-500'
                                 : 'bg-green-500'
-                              : 'bg-gray-200'
+                              : ''
                           }`}
                         />
                       ))}
@@ -358,59 +257,123 @@ export default function Overview() {
         )}
       </div>
 
-      {/* Charts Section */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+      {/* Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+          <CardHeader>
+            <CardTitle>Earnings</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              GH₵{calculateDeliverySales(couriers.flatMap(courier => courier.orders)).toFixed(2)}
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-4xl font-bold">
+                  GH₵{calculateDeliverySales(couriers.flatMap(courier => courier.orders)).toFixed(2)}
+                </p>
+                <p className="text-sm">Monthly revenue</p>
+              </div>
+              <DollarSign className="h-12 w-12 text-white opacity-50" />
             </div>
-            <p className="text-xs text-muted-foreground">
-              +20.1% from last month
-            </p>
-          </CardContent>
-        </Card>
-        {/* ... other stat cards ... */}
-      </div>
-
-      {/* Visitor Chart */}
-      <VisitorChart />
-
-      {/* Line Charts */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2 mt-4">
-        <Card className="col-span-1">
-          <CardHeader>
-            <CardTitle>Daily Sales</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LineChart width={500} height={300} data={mockSalesData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="total" stroke="#8884d8" />
-            </LineChart>
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={earningsData}>
+                <defs>
+                  <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ffffff" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={false} />
+                <YAxis axisLine={false} tickLine={false} tick={false} />
+                <Tooltip />
+                <Area type="monotone" dataKey="earnings" stroke="#ffffff" fillOpacity={1} fill="url(#colorEarnings)" />
+              </AreaChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1">
+        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
           <CardHeader>
-            <CardTitle>Daily Deliveries</CardTitle>
+            <CardTitle>Top Sales</CardTitle>
           </CardHeader>
-          <CardContent>
-            <LineChart width={500} height={300} data={mockDeliveryData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="total" stroke="#82ca9d" />
-            </LineChart>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-2xl font-bold">Judas</p>
+                <p className="text-sm">+68% from last week</p>
+              </div>
+              <TrendingUp className="h-12 w-12 text-white opacity-50" />
+            </div>
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={topSalesData}>
+                <defs>
+                  <linearGradient id="colorTopSales" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ffffff" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={false} />
+                <YAxis axisLine={false} tickLine={false} tick={false} />
+                <Tooltip />
+                <Area type="monotone" dataKey="sales" stroke="#ffffff" fillOpacity={1} fill="url(#colorTopSales)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
+          <CardHeader>
+            <CardTitle>Best Courier</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-2xl font-bold">Judas</p>
+                <p className="text-sm">+45% from last week</p>
+              </div>
+              <Award className="h-12 w-12 text-white opacity-50" />
+            </div>
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={bestCourierData}>
+                <defs>
+                  <linearGradient id="colorBestCourier" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ffffff" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="week" axisLine={false} tickLine={false} tick={false} />
+                <YAxis axisLine={false} tickLine={false} tick={false} />
+                <Tooltip />
+                <Area type="monotone" dataKey="deliveries" stroke="#ffffff" fillOpacity={1} fill="url(#colorBestCourier)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+          <CardHeader>
+            <CardTitle>Most Distance</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-2xl font-bold">Judas</p>
+                <p className="text-sm">+17km from last week</p>
+              </div>
+              <MapPin className="h-12 w-12 text-white opacity-50" />
+            </div>
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={mostDistanceData}>
+                <defs>
+                  <linearGradient id="colorMostDistance" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ffffff" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={false} />
+                <YAxis axisLine={false} tickLine={false} tick={false} />
+                <Tooltip />
+                <Area type="monotone" dataKey="distance" stroke="#ffffff" fillOpacity={1} fill="url(#colorMostDistance)" />
+              </AreaChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
