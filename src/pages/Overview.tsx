@@ -19,6 +19,13 @@ import { User } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { toast } from "sonner"
+import { Sonner } from "@/components/ui/sonner"
+import { DollarSign } from "lucide-react"
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const GET_ORDERS_ENDPOINT = import.meta.env.VITE_GET_ORDERS_ENDPOINT;
 
 const chartData = [
   { date: "2024-04-01", desktop: 222, mobile: 150 },
@@ -95,6 +102,19 @@ const getOrderProgress = (orders: Order[]) => {
     }
   }
   return statuses;
+};
+
+const calculateTotalDeliveryPrice = (orders: Order[]) => {
+  return orders.reduce((total, order) => {
+    return total + (Number(order.deliveryPrice) || 0);
+  }, 0);
+};
+
+const calculateDeliverySales = (orders: Order[]) => {
+  return orders.reduce((acc, order) => {
+    const deliveryPrice = parseFloat(order.deliveryPrice.toString()) || 0;
+    return acc + deliveryPrice;
+  }, 0);
 };
 
 export function VisitorChart() {
@@ -205,32 +225,38 @@ const mockDeliveryData = [
   { date: '2023-10-05', total: 18 },
 ];
 
-const Overview: React.FC = () => {
+export default function Overview() {
   const [couriers, setCouriers] = useState<Courier[]>([]);
-  const [isCourierModalOpen, setIsCourierModalOpen] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
-
+  const [isCourierModalOpen, setIsCourierModalOpen] = useState(false);
+  
   useEffect(() => {
     const fetchCouriers = async () => {
       try {
+        setIsLoading(true);
         const response = await fetch(`${API_BASE_URL}${GET_ORDERS_ENDPOINT}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
           }
         });
         
-        if (!response.ok) throw new Error('Failed to fetch orders');
+        if (!response.ok) {
+          throw new Error('Failed to fetch orders');
+        }
         
         const orders = await response.json();
         
         // Group orders by courier
-        const courierOrders = orders.reduce((acc, order) => {
+        const courierMap = orders.reduce((acc: { [key: string]: Courier }, order: Order) => {
           if (order.courierName) {
             if (!acc[order.courierName]) {
               acc[order.courierName] = {
                 name: order.courierName,
                 phoneNumber: order.courierPhoneNumber || 'N/A',
-                image: null, // You'll need to get this from your users API
+                image: null,
                 orders: []
               };
             }
@@ -239,355 +265,207 @@ const Overview: React.FC = () => {
           return acc;
         }, {});
 
-        setCouriers(Object.values(courierOrders));
+        // Convert to array and sort by number of orders
+        const courierArray = Object.values(courierMap);
+        setCouriers(courierArray);
       } catch (error) {
         console.error('Error fetching couriers:', error);
+        toast.error('Failed to load couriers');
+      } finally {
+        setIsLoading(false);
       }
     };
 
     fetchCouriers();
   }, []);
 
-  const getCouriersList = () => couriers;
-
-  const totalSales = mockSalesData.reduce((acc, item) => acc + item.total, 0);
-  const totalOrders = 100; // Mock total orders
-  const averageOrderValue = totalSales / totalOrders;
-
-  // Prepare net income data for the line chart
-  const netIncomeData = mockSalesData.map(item => ({
-    date: item.date,
-    netIncome: item.total, // Assuming net income is the same as total sales for simplicity
-  }));
-
   return (
-    <div className="container mx-auto py-8 mt-16">
-      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
-
-      {/* New Visitor Chart Section */}
-      <VisitorChart />
-
-      {/* Two Columns for Graphs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Daily Sales</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <BarChart width={500} height={300} data={mockSalesData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="total" fill="#4caf50" />
-            </BarChart>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Daily Deliveries</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <BarChart width={500} height={300} data={mockDeliveryData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="total" fill="#2196f3" />
-            </BarChart>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Existing Sections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="mb-4 shadow-lg rounded-lg overflow-hidden">
-          <CardHeader>
-            <CardTitle>Net Income</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <h2 className="text-2xl font-semibold">GH₵{totalSales.toFixed(2)}</h2>
-            <LineChart width={500} height={300} data={netIncomeData} style={{ borderRadius: '10px' }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="netIncome" stroke="#ff7300" strokeWidth={2} />
-            </LineChart>
-          </CardContent>
-        </Card>
-
-        <Card className="mb-4 shadow-lg rounded-lg overflow-hidden">
-          <CardHeader>
-            <CardTitle>Total Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <h2 className="text-2xl font-semibold">{totalOrders}</h2>
-          </CardContent>
-        </Card>
-
-        <Card className="mb-4 shadow-lg rounded-lg overflow-hidden">
-          <CardHeader>
-            <CardTitle>Average Order Value</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <h2 className="text-2xl font-semibold">GH₵{averageOrderValue.toFixed(2)}</h2>
-          </CardContent>
-        </Card>
-
-        <Card className="mb-4 col-span-2 shadow-lg rounded-lg overflow-hidden">
-          <CardHeader>
-            <CardTitle>Most Selling Restaurant</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>Restaurant ID: 12345</p> {/* Replace with actual restaurant details */}
-          </CardContent>
-        </Card>
-
-        <Card className="mb-4 col-span-2 shadow-lg rounded-lg overflow-hidden">
-          <CardHeader>
-            <CardTitle>Most Deliveries</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>Restaurant ID: 67890</p> {/* Replace with actual restaurant details */}
-          </CardContent>
-        </Card>
-
-        <Card className="mb-4 col-span-2 shadow-lg rounded-lg overflow-hidden">
-          <CardHeader>
-            <CardTitle>Recent Transactions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="border border-gray-300 rounded-lg p-4">
-              <li className="border-b py-2">
-                <p>Order Number: 001</p>
-                <p>Customer: John Doe</p>
-                <p>Status: Completed</p>
-                <p>Total Price: GH₵50.00</p>
-                <p>Order Date: 2023-10-01</p>
-              </li>
-              <li className="border-b py-2">
-                <p>Order Number: 002</p>
-                <p>Customer: Jane Smith</p>
-                <p>Status: Completed</p>
-                <p>Total Price: GH₵75.00</p>
-                <p>Order Date: 2023-10-02</p>
-              </li>
-              {/* Add more mock transactions as needed */}
-            </ul>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Couriers Overview</CardTitle>
-          <CardDescription>Current status of all active couriers</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Courier</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Orders</TableHead>
-                <TableHead className="w-[300px]">Status</TableHead>
-                <TableHead>Latest Order</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {getCouriersList().map((courier) => (
-                <TableRow key={courier.name}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      {courier.image ? (
-                        <img 
-                          src={courier.image.url} 
-                          alt={courier.name}
-                          className="h-8 w-8 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                          <User className="h-4 w-4 text-gray-500" />
-                        </div>
-                      )}
-                      <span>{courier.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{courier.phoneNumber}</TableCell>
-                  <TableCell>{courier.orders.length} orders</TableCell>
-                  <TableCell>
+    <div className="container mx-auto p-6 mt-40">
+      {/* Active Couriers Section */}
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold mb-4">Active Couriers</h2>
+        {isLoading ? (
+          <div className="flex justify-center items-center h-32">
+            <LoadingSpinner />
+          </div>
+        ) : couriers.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {couriers.map((courier) => (
+              <Card 
+                key={courier.name}
+                className="cursor-pointer hover:shadow-lg transition-shadow bg-white dark:bg-gray-800"
+                onClick={() => {
+                  setSelectedCourier(courier);
+                  setIsCourierModalOpen(true);
+                }}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div className="flex items-center gap-3">
+                    {courier.image ? (
+                      <img 
+                        src={courier.image.url} 
+                        alt={courier.name}
+                        className="h-8 w-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                        <User className="h-4 w-4 text-gray-500" />
+                      </div>
+                    )}
+                    <CardTitle className="text-sm font-medium">{courier.name}</CardTitle>
+                  </div>
+                  <User className="h-4 w-4 text-gray-500" />
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-500">{courier.phoneNumber}</p>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-sm text-gray-500">{courier.orders.length} orders</p>
+                    <p className="text-sm font-medium text-green-600">
+                      GH₵{calculateTotalDeliveryPrice(courier.orders).toFixed(2)}
+                    </p>
+                  </div>
+                  
+                  {/* Progress Line */}
+                  <div className="mt-4 relative">
                     <div className="flex gap-1 h-1 w-full">
                       {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete]) => (
                         <div 
                           key={status}
                           className={`flex-1 rounded-full ${
                             isComplete 
-                              ? status === 'Received' ? 'bg-blue-500'
+                              ? status === 'Assigned' ? 'bg-blue-500'
                                 : status === 'Pickup' ? 'bg-yellow-500'
                                 : status === 'OnTheWay' ? 'bg-purple-500'
                                 : 'bg-green-500'
-                              : 'bg-gray-200 dark:bg-gray-700'
+                              : 'bg-gray-200'
                           }`}
                         />
                       ))}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    {courier.orders.length > 0 ? (
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        courier.orders[courier.orders.length - 1].orderStatus === 'Delivered' 
-                          ? 'bg-green-100 text-green-700'
-                          : courier.orders[courier.orders.length - 1].orderStatus === 'OnTheWay'
-                          ? 'bg-purple-100 text-purple-700'
-                          : courier.orders[courier.orders.length - 1].orderStatus === 'Pickup'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {courier.orders[courier.orders.length - 1].orderStatus}
-                      </span>
-                    ) : (
-                      'No orders'
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <div className="mb-8">
-        <h2 className="text-lg font-semibold mb-4">Active Couriers</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {getCouriersList().map((courier) => (
-            <Card 
-              key={courier.name}
-              className="cursor-pointer hover:shadow-lg transition-shadow bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-              onClick={() => {
-                setSelectedCourier(courier);
-                setIsCourierModalOpen(true);
-              }}
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="flex items-center gap-3">
-                  {courier.image ? (
-                    <img 
-                      src={courier.image.url} 
-                      alt={courier.name}
-                      className="h-8 w-8 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                      <User className="h-4 w-4 text-gray-500" />
-                    </div>
-                  )}
-                  <CardTitle className="text-sm font-medium">{courier.name}</CardTitle>
-                </div>
-                <User className="h-4 w-4 text-gray-500" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-500">{courier.phoneNumber}</p>
-                <p className="text-sm text-gray-500 mt-1">{courier.orders.length} orders</p>
-                
-                {/* Progress Line */}
-                <div className="mt-4 relative">
-                  {/* Progress Lines */}
-                  <div className="flex gap-1 h-1 w-full">
-                    {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete]) => (
-                      <div 
-                        key={status}
-                        className={`flex-1 rounded-full ${
-                          isComplete 
-                            ? status === 'Assigned' ? 'bg-blue-500'
-                              : status === 'Pickup' ? 'bg-yellow-500'
-                              : status === 'OnTheWay' ? 'bg-purple-500'
-                              : 'bg-green-500'
-                            : 'bg-gray-200 dark:bg-gray-700'
-                        }`}
-                      />
-                    ))}
                   </div>
-                  
-                  {/* Status Labels */}
-                  <div className="flex justify-between mt-2">
-                    {Object.entries(getOrderProgress(courier.orders)).map(([status]) => (
-                      <span key={status} className="text-xs text-gray-500">
-                        {status === 'Assigned' ? 'Assigned' :
-                         status === 'Pickup' ? 'Picked Up' :
-                         status === 'OnTheWay' ? 'On Way' :
-                         'Completed'}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Courier Details Modal */}
-        <Dialog open={isCourierModalOpen} onOpenChange={() => {
-          setIsCourierModalOpen(false);
-          setSelectedCourier(null);
-        }}>
-          <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col">
-            <DialogHeader>
-              <DialogTitle>{selectedCourier?.name}'s Deliveries</DialogTitle>
-            </DialogHeader>
-            <div className="flex-1 overflow-auto mt-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Order #</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Delivery Price</TableHead>
-                    <TableHead>Pickup Location</TableHead>
-                    <TableHead>Dropoff Location</TableHead>
-                    <TableHead>Received</TableHead>
-                    <TableHead>Picked Up</TableHead>
-                    <TableHead>On The Way</TableHead>
-                    <TableHead>Completed</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedCourier?.orders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell>{order.orderNumber}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-700' :
-                          order.orderStatus === 'ReadyForPickup' ? 'bg-blue-100 text-blue-700' :
-                          order.orderStatus === 'Cancelled' ? 'bg-red-100 text-red-700' :
-                          order.orderStatus === 'Assigned' ? 'bg-yellow-100 text-yellow-700' :
-                          order.orderStatus === 'Pickup' ? 'bg-orange-100 text-orange-700' :
-                          order.orderStatus === 'OnTheWay' ? 'bg-purple-100 text-purple-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
-                          {order.orderStatus}
-                        </span>
-                      </TableCell>
-                      <TableCell>GH₵{Number(order.deliveryPrice).toFixed(2)}</TableCell>
-                      <TableCell>{order.pickupName}</TableCell>
-                      <TableCell>{order.dropoffName}</TableCell>
-                      <TableCell>{order.orderReceivedTime ? new Date(order.orderReceivedTime).toLocaleTimeString() : '-'}</TableCell>
-                      <TableCell>{order.orderPickedUpTime ? new Date(order.orderPickedUpTime).toLocaleTimeString() : '-'}</TableCell>
-                      <TableCell>{order.orderOnmywayTime ? new Date(order.orderOnmywayTime).toLocaleTimeString() : '-'}</TableCell>
-                      <TableCell>{order.orderCompletedTime ? new Date(order.orderCompletedTime).toLocaleTimeString() : '-'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </DialogContent>
-        </Dialog>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center text-gray-500">No active couriers found</div>
+        )}
       </div>
+
+      {/* Charts Section */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              GH₵{calculateDeliverySales(couriers.flatMap(courier => courier.orders)).toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              +20.1% from last month
+            </p>
+          </CardContent>
+        </Card>
+        {/* ... other stat cards ... */}
+      </div>
+
+      {/* Visitor Chart */}
+      <VisitorChart />
+
+      {/* Line Charts */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2 mt-4">
+        <Card className="col-span-1">
+          <CardHeader>
+            <CardTitle>Daily Sales</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LineChart width={500} height={300} data={mockSalesData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="total" stroke="#8884d8" />
+            </LineChart>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-1">
+          <CardHeader>
+            <CardTitle>Daily Deliveries</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LineChart width={500} height={300} data={mockDeliveryData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="total" stroke="#82ca9d" />
+            </LineChart>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Courier Details Modal */}
+      <Dialog open={isCourierModalOpen} onOpenChange={() => {
+        setIsCourierModalOpen(false);
+        setSelectedCourier(null);
+      }}>
+        <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{selectedCourier?.name}'s Deliveries</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto mt-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Order #</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Delivery Price</TableHead>
+                  <TableHead>Pickup Location</TableHead>
+                  <TableHead>Dropoff Location</TableHead>
+                  <TableHead>Received</TableHead>
+                  <TableHead>Picked Up</TableHead>
+                  <TableHead>On The Way</TableHead>
+                  <TableHead>Completed</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {selectedCourier?.orders.map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell>{order.orderNumber}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-700' :
+                        order.orderStatus === 'ReadyForPickup' ? 'bg-blue-100 text-blue-700' :
+                        order.orderStatus === 'Cancelled' ? 'bg-red-100 text-red-700' :
+                        order.orderStatus === 'Assigned' ? 'bg-yellow-100 text-yellow-700' :
+                        order.orderStatus === 'Pickup' ? 'bg-orange-100 text-orange-700' :
+                        order.orderStatus === 'OnTheWay' ? 'bg-purple-100 text-purple-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {order.orderStatus}
+                      </span>
+                    </TableCell>
+                    <TableCell>GH₵{Number(order.deliveryPrice).toFixed(2)}</TableCell>
+                    <TableCell>{order.pickupName}</TableCell>
+                    <TableCell>{order.dropoffName}</TableCell>
+                    <TableCell>{order.orderReceivedTime ? new Date(order.orderReceivedTime).toLocaleTimeString() : '-'}</TableCell>
+                    <TableCell>{order.orderPickedUpTime ? new Date(order.orderPickedUpTime).toLocaleTimeString() : '-'}</TableCell>
+                    <TableCell>{order.orderOnmywayTime ? new Date(order.orderOnmywayTime).toLocaleTimeString() : '-'}</TableCell>
+                    <TableCell>{order.orderCompletedTime ? new Date(order.orderCompletedTime).toLocaleTimeString() : '-'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Sonner position="top-right" />
     </div>
   );
-};
-
-export default Overview; 
+} 

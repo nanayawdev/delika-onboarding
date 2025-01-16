@@ -1011,7 +1011,12 @@ export default function RestaurantDetail() {
                       </CardHeader>
                       <CardContent>
                         <p className="text-sm text-gray-500">{courier.phoneNumber}</p>
-                        <p className="text-sm text-gray-500 mt-1">{courier.orders.length} orders</p>
+                        <div className="flex justify-between items-center mt-1">
+                          <p className="text-sm text-gray-500">{courier.orders.length} orders</p>
+                          <p className="text-sm font-medium text-green-600">
+                            GH₵{courier.orders.reduce((total, order) => total + (Number(order.deliveryPrice) || 0), 0).toFixed(2)}
+                          </p>
+                        </div>
                         
                         {/* Progress Line */}
                         <div className="mt-4 relative">
