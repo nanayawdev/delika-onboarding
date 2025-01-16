@@ -72,7 +72,7 @@ interface Order {
 
 const getOrderProgress = (orders: Order[]) => {
   const statuses = {
-    Received: false,
+    Assigned: false,
     Pickup: false,
     OnTheWay: false,
     Delivered: false
@@ -85,19 +85,19 @@ const getOrderProgress = (orders: Order[]) => {
         statuses.Delivered = true;
         statuses.OnTheWay = true;
         statuses.Pickup = true;
-        statuses.Received = true;
+        statuses.Assigned = true;
         break;
       case 'OnTheWay':
         statuses.OnTheWay = true;
         statuses.Pickup = true;
-        statuses.Received = true;
+        statuses.Assigned = true;
         break;
       case 'Pickup':
         statuses.Pickup = true;
-        statuses.Received = true;
+        statuses.Assigned = true;
         break;
-      case 'Received':
-        statuses.Received = true;
+      case 'Assigned':
+        statuses.Assigned = true;
         break;
     }
   }
@@ -228,6 +228,7 @@ const mockDeliveryData = [
 export default function Overview() {
   const [couriers, setCouriers] = useState<Courier[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
   const [isCourierModalOpen, setIsCourierModalOpen] = useState(false);
   
@@ -242,35 +243,36 @@ export default function Overview() {
             'Content-Type': 'application/json'
           }
         });
-        
+
         if (!response.ok) {
           throw new Error('Failed to fetch orders');
         }
-        
+
         const orders = await response.json();
-        
+        console.log('API Response:', orders);
+
         // Group orders by courier
         const courierMap = orders.reduce((acc: { [key: string]: Courier }, order: Order) => {
-          if (order.courierName) {
-            if (!acc[order.courierName]) {
-              acc[order.courierName] = {
-                name: order.courierName,
-                phoneNumber: order.courierPhoneNumber || 'N/A',
-                image: null,
-                orders: []
-              };
-            }
-            acc[order.courierName].orders.push(order);
+          const courierName = order.courierName || 'Unassigned';
+          if (!acc[courierName]) {
+            acc[courierName] = {
+              name: courierName,
+              phoneNumber: order.courierPhoneNumber || 'N/A',
+              image: null,
+              orders: []
+            };
           }
+          acc[courierName].orders.push(order);
           return acc;
         }, {});
 
-        // Convert to array and sort by number of orders
         const courierArray = Object.values(courierMap);
+        console.log('Processed Couriers:', courierArray);
         setCouriers(courierArray);
+
       } catch (error) {
         console.error('Error fetching couriers:', error);
-        toast.error('Failed to load couriers');
+        setError('Failed to load couriers');
       } finally {
         setIsLoading(false);
       }
@@ -288,6 +290,8 @@ export default function Overview() {
           <div className="flex justify-center items-center h-32">
             <LoadingSpinner />
           </div>
+        ) : error ? (
+          <div className="text-center text-red-500">{error}</div>
         ) : couriers.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {couriers.map((courier) => (
@@ -348,7 +352,9 @@ export default function Overview() {
             ))}
           </div>
         ) : (
-          <div className="text-center text-gray-500">No active couriers found</div>
+          <div className="text-center text-gray-500">
+            No active couriers found. Please check if orders have assigned couriers.
+          </div>
         )}
       </div>
 
