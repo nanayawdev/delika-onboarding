@@ -19,6 +19,8 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import PurseIcon from "@/assets/icons/purse-stroke-rounded";
 import { Badge } from "@/components/ui/badge";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { BarChart, Bar } from 'recharts';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const GET_ORDERS_ENDPOINT = import.meta.env.VITE_GET_ORDERS_ENDPOINT;
@@ -126,7 +128,16 @@ export default function Overview() {
   const [error, setError] = useState<string | null>(null);
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
   const [isCourierModalOpen, setIsCourierModalOpen] = useState(false);
-  
+  const [isUsersModalOpen, setIsUsersModalOpen] = useState(false);
+  const [isBranchesModalOpen, setIsBranchesModalOpen] = useState(false);
+  const [isContactsModalOpen, setIsContactsModalOpen] = useState(false);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<string | null>(null);
+
+  const users = ["User1", "User2", "User3"]; // Example user data
+  const branches = ["Branch1", "Branch2", "Branch3"]; // Example branch data
+  const contacts = ["Contact1", "Contact2", "Contact3"]; // Example contact data
+  const restaurants = ["Restaurant A", "Restaurant B", "Restaurant C"]; // Example restaurant data
+
   useEffect(() => {
     const fetchCouriers = async () => {
       try {
@@ -258,7 +269,7 @@ export default function Overview() {
       </div>
 
       {/* Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-28">
         <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
           <CardHeader>
             <CardTitle>Earnings</CardTitle>
@@ -377,6 +388,129 @@ export default function Overview() {
           </CardContent>
         </Card>
       </div>
+
+      {/* New Sales Overview Section */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-bold">Sales Overview</h2>
+        <Select onValueChange={setSelectedRestaurant}>
+          <SelectTrigger className="ml-4 w-[200px] bg-white rounded-md shadow-md">
+            <SelectValue placeholder="Select" />
+          </SelectTrigger>
+          <SelectContent className="bg-white rounded-md shadow-md">
+            {restaurants.map((restaurant) => (
+              <SelectItem key={restaurant} value={restaurant}>
+                {restaurant}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Bar Chart for Sales Data */}
+      {selectedRestaurant && (
+        <div className="bg-gray-100 p-4 rounded-md mb-28">
+          <h3 className="text-xl font-semibold">{selectedRestaurant} Sales Data</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={earningsData}>
+              <XAxis dataKey="month" axisLine={false} tickLine={false} />
+              <YAxis axisLine={false} tickLine={false} />
+              <Tooltip />
+              <Bar dataKey="earnings" fill="#4caf50" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* New Section for Users, Branches, Contacts */}
+      <h2 className="text-2xl font-bold mb-4">Overview</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card 
+          className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white cursor-pointer"
+          onClick={() => setIsUsersModalOpen(true)}
+        >
+          <CardHeader>
+            <CardTitle>Users</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <p className="text-2xl font-bold">150</p>
+            <p className="text-sm">Total Users</p>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="bg-gradient-to-r from-teal-500 to-teal-600 text-white cursor-pointer"
+          onClick={() => setIsBranchesModalOpen(true)}
+        >
+          <CardHeader>
+            <CardTitle>Branches</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <p className="text-2xl font-bold">25</p>
+            <p className="text-sm">Total Branches</p>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="bg-gradient-to-r from-orange-500 to-orange-600 text-white cursor-pointer"
+          onClick={() => setIsContactsModalOpen(true)}
+        >
+          <CardHeader>
+            <CardTitle>Contacts</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <p className="text-2xl font-bold">300</p>
+            <p className="text-sm">Total Contacts</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Users Modal */}
+      <Dialog open={isUsersModalOpen} onOpenChange={() => setIsUsersModalOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Users List</DialogTitle>
+          </DialogHeader>
+          <div>
+            <ul>
+              {users.map((user, index) => (
+                <li key={index} className="py-1">{user}</li>
+              ))}
+            </ul>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Branches Modal */}
+      <Dialog open={isBranchesModalOpen} onOpenChange={() => setIsBranchesModalOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Branches List</DialogTitle>
+          </DialogHeader>
+          <div>
+            <ul>
+              {branches.map((branch, index) => (
+                <li key={index} className="py-1">{branch}</li>
+              ))}
+            </ul>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Contacts Modal */}
+      <Dialog open={isContactsModalOpen} onOpenChange={() => setIsContactsModalOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Contacts List</DialogTitle>
+          </DialogHeader>
+          <div>
+            <ul>
+              {contacts.map((contact, index) => (
+                <li key={index} className="py-1">{contact}</li>
+              ))}
+            </ul>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Courier Details Modal */}
       <Dialog open={isCourierModalOpen} onOpenChange={() => {
