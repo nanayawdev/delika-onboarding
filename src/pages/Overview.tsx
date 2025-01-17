@@ -21,9 +21,11 @@ import { Badge } from "@/components/ui/badge";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { BarChart, Bar } from 'recharts';
+import { GoogleMap, LoadScript, DirectionsRenderer } from '@react-google-maps/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const GET_ORDERS_ENDPOINT = import.meta.env.VITE_GET_ORDERS_ENDPOINT;
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 interface Courier {
   name: string;
@@ -132,6 +134,7 @@ export default function Overview() {
   const [isBranchesModalOpen, setIsBranchesModalOpen] = useState(false);
   const [isContactsModalOpen, setIsContactsModalOpen] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState<string | null>(null);
+  const [directions, setDirections] = useState(null);
 
   const users = ["User1", "User2", "User3"]; // Example user data
   const branches = ["Branch1", "Branch2", "Branch3"]; // Example branch data
@@ -187,6 +190,28 @@ export default function Overview() {
     fetchCouriers();
   }, []);
 
+  const handleCourierClick = async (courier) => {
+    setSelectedCourier(courier);
+    const origin = { lat: courier.orders[0].pickupLocation.lat, lng: courier.orders[0].pickupLocation.lng };
+    const destination = { lat: courier.orders[0].dropoffLocation.lat, lng: courier.orders[0].dropoffLocation.lng };
+
+    const directionsService = new window.google.maps.DirectionsService();
+    directionsService.route(
+      {
+        origin,
+        destination,
+        travelMode: window.google.maps.TravelMode.DRIVING,
+      },
+      (result, status) => {
+        if (status === window.google.maps.DirectionsStatus.OK) {
+          setDirections(result);
+        } else {
+          console.error(`Error fetching directions: ${result}`);
+        }
+      }
+    );
+  };
+
   return (
     <div className="container mx-auto p-6 mt-40">
       {/* Active Couriers Section */}
@@ -204,10 +229,7 @@ export default function Overview() {
               <Card 
                 key={courier.name}
                 className="cursor-pointer hover:shadow-lg transition-shadow bg-white dark:bg-gray-800"
-                onClick={() => {
-                  setSelectedCourier(courier);
-                  setIsCourierModalOpen(true);
-                }}
+                onClick={() => handleCourierClick(courier)}
               >
                 <CardHeader className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
@@ -267,6 +289,19 @@ export default function Overview() {
           </div>
         )}
       </div>
+
+      {/* Google Map */}
+      {selectedCourier && (
+        <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+          <GoogleMap
+            mapContainerStyle={{ height: "400px", width: "100%" }}
+            center={{ lat: selectedCourier.orders[0].pickupLocation.lat, lng: selectedCourier.orders[0].pickupLocation.lng }}
+            zoom={14}
+          >
+            {directions && <DirectionsRenderer directions={directions} />}
+          </GoogleMap>
+        </LoadScript>
+      )}
 
       {/* Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-28">
