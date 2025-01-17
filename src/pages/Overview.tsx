@@ -1,190 +1,43 @@
 "use client"
 
 import * as React from "react";
+import { useState, useEffect } from "react";
+import { GoogleMap, LoadScript, DirectionsRenderer } from '@react-google-maps/api';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { User } from "lucide-react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { toast } from "sonner"
-import { Sonner } from "@/components/ui/sonner"
-import { DollarSign, Star, MessageCircle, TrendingUp, Award, MapPin } from "lucide-react"
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import PurseIcon from "@/assets/icons/purse-stroke-rounded";
-import { Badge } from "@/components/ui/badge";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { BarChart, Bar } from 'recharts';
-import { GoogleMap, LoadScript, DirectionsRenderer } from '@react-google-maps/api';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { DollarSign } from "lucide-react";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-const GET_ORDERS_ENDPOINT = import.meta.env.VITE_GET_ORDERS_ENDPOINT;
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-interface Courier {
-  name: string;
-  phoneNumber: string;
-  image?: { url: string } | null;
-  orders: Order[];
-}
-
-interface Order {
-  id: string;
-  orderStatus: string;
-  orderNumber: string;
-  customerName: string;
-  deliveryPrice: number;
-  orderReceivedTime?: string;
-  orderPickedUpTime?: string;
-  orderOnmywayTime?: string;
-  orderCompletedTime?: string;
-}
-
-const getOrderProgress = (orders: Order[]) => {
-  const statuses = {
-    Assigned: false,
-    Pickup: false,
-    OnTheWay: false,
-    Delivered: false
-  };
-
-  const latestOrder = orders[orders.length - 1];
-  if (latestOrder) {
-    switch (latestOrder.orderStatus) {
-      case 'Delivered':
-        statuses.Delivered = true;
-        statuses.OnTheWay = true;
-        statuses.Pickup = true;
-        statuses.Assigned = true;
-        break;
-      case 'OnTheWay':
-        statuses.OnTheWay = true;
-        statuses.Pickup = true;
-        statuses.Assigned = true;
-        break;
-      case 'Pickup':
-        statuses.Pickup = true;
-        statuses.Assigned = true;
-        break;
-      case 'Assigned':
-        statuses.Assigned = true;
-        break;
-    }
-  }
-  return statuses;
-};
-
-const calculateTotalDeliveryPrice = (orders: Order[]) => {
-  return orders.reduce((total, order) => {
-    return total + (Number(order.deliveryPrice) || 0);
-  }, 0);
-};
-
-const calculateDeliverySales = (orders: Order[]) => {
-  return orders.reduce((acc, order) => {
-    const deliveryPrice = parseFloat(order.deliveryPrice.toString()) || 0;
-    return acc + deliveryPrice;
-  }, 0);
-};
-
-const earningsData = [
-  { month: 'Jan', earnings: 5000 },
-  { month: 'Feb', earnings: 7500 },
-  { month: 'Mar', earnings: 6000 },
-  { month: 'Apr', earnings: 8000 },
-  { month: 'May', earnings: 9500 },
-];
-
-const topSalesData = [
-  { day: 'Mon', sales: 100 },
-  { day: 'Tue', sales: 200 },
-  { day: 'Wed', sales: 150 },
-  { day: 'Thu', sales: 250 },
-  { day: 'Fri', sales: 300 },
-];
-
-const bestCourierData = [
-  { week: 'Week 1', deliveries: 50 },
-  { week: 'Week 2', deliveries: 75 },
-  { week: 'Week 3', deliveries: 60 },
-  { week: 'Week 4', deliveries: 90 },
-];
-
-const mostDistanceData = [
-  { day: 'Mon', distance: 10 },
-  { day: 'Tue', distance: 15 },
-  { day: 'Wed', distance: 12 },
-  { day: 'Thu', distance: 18 },
-  { day: 'Fri', distance: 20 },
-];
-
 export default function Overview() {
-  const [couriers, setCouriers] = useState<Courier[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
-  const [isCourierModalOpen, setIsCourierModalOpen] = useState(false);
-  const [isUsersModalOpen, setIsUsersModalOpen] = useState(false);
-  const [isBranchesModalOpen, setIsBranchesModalOpen] = useState(false);
-  const [isContactsModalOpen, setIsContactsModalOpen] = useState(false);
-  const [selectedRestaurant, setSelectedRestaurant] = useState<string | null>(null);
+  const [selectedCourier, setSelectedCourier] = useState(null);
   const [directions, setDirections] = useState(null);
+  const [couriers, setCouriers] = useState([]);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<string | null>(null);
 
-  const users = ["User1", "User2", "User3"]; // Example user data
-  const branches = ["Branch1", "Branch2", "Branch3"]; // Example branch data
-  const contacts = ["Contact1", "Contact2", "Contact3"]; // Example contact data
-  const restaurants = ["Restaurant A", "Restaurant B", "Restaurant C"]; // Example restaurant data
+  // Example restaurant data
+  const restaurants = ["Restaurant A", "Restaurant B", "Restaurant C"];
+
+  // Mock earnings data
+  const earningsData = [
+    { month: 'Jan', earnings: 5000 },
+    { month: 'Feb', earnings: 7500 },
+    { month: 'Mar', earnings: 6000 },
+    { month: 'Apr', earnings: 8000 },
+    { month: 'May', earnings: 9500 },
+  ];
 
   useEffect(() => {
     const fetchCouriers = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch(`${API_BASE_URL}${GET_ORDERS_ENDPOINT}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch orders');
-        }
-
-        const orders = await response.json();
-        console.log('API Response:', orders);
-
-        // Group orders by courier
-        const courierMap = orders.reduce((acc: { [key: string]: Courier }, order: Order) => {
-          const courierName = order.courierName || 'Unassigned';
-          if (!acc[courierName]) {
-            acc[courierName] = {
-              name: courierName,
-              phoneNumber: order.courierPhoneNumber || 'N/A',
-              image: null,
-              orders: []
-            };
-          }
-          acc[courierName].orders.push(order);
-          return acc;
-        }, {});
-
-        const courierArray = Object.values(courierMap);
-        console.log('Processed Couriers:', courierArray);
-        setCouriers(courierArray);
-
-      } catch (error) {
-        console.error('Error fetching couriers:', error);
-        setError('Failed to load couriers');
-      } finally {
-        setIsLoading(false);
-      }
+      const response = await fetch('/api/couriers'); // Example endpoint
+      const data = await response.json();
+      setCouriers(data);
     };
 
     fetchCouriers();
@@ -213,81 +66,85 @@ export default function Overview() {
   };
 
   return (
-    <div className="container mx-auto p-6 mt-40">
-      {/* Active Couriers Section */}
-      <div className="mb-32">
-        <h2 className="text-2xl font-bold mb-6">Active Couriers</h2>
-        {isLoading ? (
-          <div className="flex justify-center items-center h-32">
-            <LoadingSpinner />
-          </div>
-        ) : error ? (
-          <div className="text-center text-red-500">{error}</div>
-        ) : couriers.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {couriers.map((courier) => (
-              <Card 
-                key={courier.name}
-                className="cursor-pointer hover:shadow-lg transition-shadow bg-white dark:bg-gray-800"
-                onClick={() => handleCourierClick(courier)}
-              >
-                <CardHeader className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    {courier.image ? (
-                      <img 
-                        src={courier.image.url} 
-                        alt={courier.name}
-                        className="h-12 w-12 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                        <User className="h-6 w-6 text-gray-500" />
-                      </div>
-                    )}
-                    <div>
-                      <CardTitle className="text-lg font-semibold">{courier.name}</CardTitle>
-                      <p className="text-sm text-gray-500">{courier.phoneNumber}</p>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="text-sm">
-                    {courier.orders.length} orders
-                  </Badge>
-                </CardHeader>
-                <CardContent className="mt-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-gray-500">Total Earnings</p>
-                    <p className="text-lg font-semibold text-green-600">
-                      GH₵{calculateTotalDeliveryPrice(courier.orders).toFixed(2)}
-                    </p>
-                  </div>
-                  
-                  {/* Progress Line */}
-                  <div className="mt-4 relative">
-                    <div className="flex gap-1 h-2 w-full rounded-full bg-gray-200">
-                      {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete]) => (
-                        <div 
-                          key={status}
-                          className={`flex-1 rounded-full ${
-                            isComplete 
-                              ? status === 'Assigned' ? 'bg-blue-500'
-                                : status === 'Pickup' ? 'bg-yellow-500'
-                                : status === 'OnTheWay' ? 'bg-purple-500'
-                                : 'bg-green-500'
-                              : ''
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center text-gray-500">
-            No active couriers found. Please check if orders have assigned couriers.
-          </div>
-        )}
+    <div className="container mx-auto p-6 mt-10">
+      <header className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <div className="flex items-center">
+          <span className="mr-4">Alicia Koch</span>
+          <button className="bg-gray-200 p-2 rounded">Settings</button>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card className="bg-white shadow-md">
+          <CardHeader>
+            <CardTitle>Total Revenue</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-between items-center">
+              <p className="text-2xl font-bold">$45,231.89</p>
+              <DollarSign className="h-6 w-6 text-gray-500" />
+            </div>
+            <p className="text-sm text-gray-500">+20.1% from last month</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white shadow-md">
+          <CardHeader>
+            <CardTitle>Subscriptions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-between items-center">
+              <p className="text-2xl font-bold">+2,350</p>
+            </div>
+            <p className="text-sm text-gray-500">+180.1% from last month</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white shadow-md">
+          <CardHeader>
+            <CardTitle>Sales</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-between items-center">
+              <p className="text-2xl font-bold">+12,234</p>
+            </div>
+            <p className="text-sm text-gray-500">+19% from last month</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white shadow-md">
+          <CardHeader>
+            <CardTitle>Active Now</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-between items-center">
+              <p className="text-2xl font-bold">+573</p>
+            </div>
+            <p className="text-sm text-gray-500">+201 since last hour</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <h2 className="text-2xl font-bold mb-4">Overview</h2>
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={earningsData}>
+          <XAxis dataKey="month" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="earnings" fill="#4caf50" />
+        </BarChart>
+      </ResponsiveContainer>
+
+      <h2 className="text-2xl font-bold mb-4">Recent Sales</h2>
+      <div className="bg-white shadow-md p-4 rounded">
+        <ul>
+          <li>Olivia Martin - $1,999.00</li>
+          <li>Jackson Lee - $39.00</li>
+          <li>Isabella Nguyen - $299.00</li>
+          <li>William Kim - $99.00</li>
+          <li>Sofia Davis - $39.00</li>
+        </ul>
       </div>
 
       {/* Google Map */}
@@ -302,308 +159,6 @@ export default function Overview() {
           </GoogleMap>
         </LoadScript>
       )}
-
-      {/* Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-28">
-        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-          <CardHeader>
-            <CardTitle>Earnings</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-4xl font-bold">
-                  GH₵{calculateDeliverySales(couriers.flatMap(courier => courier.orders)).toFixed(2)}
-                </p>
-                <p className="text-sm">Monthly revenue</p>
-              </div>
-              <DollarSign className="h-12 w-12 text-white opacity-50" />
-            </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={earningsData}>
-                <defs>
-                  <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ffffff" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={false} />
-                <YAxis axisLine={false} tickLine={false} tick={false} />
-                <Tooltip />
-                <Area type="monotone" dataKey="earnings" stroke="#ffffff" fillOpacity={1} fill="url(#colorEarnings)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
-          <CardHeader>
-            <CardTitle>Top Sales</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-2xl font-bold">Judas</p>
-                <p className="text-sm">+68% from last week</p>
-              </div>
-              <TrendingUp className="h-12 w-12 text-white opacity-50" />
-            </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={topSalesData}>
-                <defs>
-                  <linearGradient id="colorTopSales" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ffffff" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={false} />
-                <YAxis axisLine={false} tickLine={false} tick={false} />
-                <Tooltip />
-                <Area type="monotone" dataKey="sales" stroke="#ffffff" fillOpacity={1} fill="url(#colorTopSales)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
-          <CardHeader>
-            <CardTitle>Best Courier</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-2xl font-bold">Judas</p>
-                <p className="text-sm">+45% from last week</p>
-              </div>
-              <Award className="h-12 w-12 text-white opacity-50" />
-            </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={bestCourierData}>
-                <defs>
-                  <linearGradient id="colorBestCourier" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ffffff" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="week" axisLine={false} tickLine={false} tick={false} />
-                <YAxis axisLine={false} tickLine={false} tick={false} />
-                <Tooltip />
-                <Area type="monotone" dataKey="deliveries" stroke="#ffffff" fillOpacity={1} fill="url(#colorBestCourier)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
-          <CardHeader>
-            <CardTitle>Most Distance</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-2xl font-bold">Judas</p>
-                <p className="text-sm">+17km from last week</p>
-              </div>
-              <MapPin className="h-12 w-12 text-white opacity-50" />
-            </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={mostDistanceData}>
-                <defs>
-                  <linearGradient id="colorMostDistance" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ffffff" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={false} />
-                <YAxis axisLine={false} tickLine={false} tick={false} />
-                <Tooltip />
-                <Area type="monotone" dataKey="distance" stroke="#ffffff" fillOpacity={1} fill="url(#colorMostDistance)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* New Sales Overview Section */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold">Sales Overview</h2>
-        <Select onValueChange={setSelectedRestaurant}>
-          <SelectTrigger className="ml-4 w-[200px] bg-white rounded-md shadow-md">
-            <SelectValue placeholder="Select" />
-          </SelectTrigger>
-          <SelectContent className="bg-white rounded-md shadow-md">
-            {restaurants.map((restaurant) => (
-              <SelectItem key={restaurant} value={restaurant}>
-                {restaurant}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Bar Chart for Sales Data */}
-      {selectedRestaurant && (
-        <div className="bg-gray-100 p-4 rounded-md mb-28">
-          <h3 className="text-xl font-semibold">{selectedRestaurant} Sales Data</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={earningsData}>
-              <XAxis dataKey="month" axisLine={false} tickLine={false} />
-              <YAxis axisLine={false} tickLine={false} />
-              <Tooltip />
-              <Bar dataKey="earnings" fill="#4caf50" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* New Section for Users, Branches, Contacts */}
-      <h2 className="text-2xl font-bold mb-4">Overview</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card 
-          className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white cursor-pointer"
-          onClick={() => setIsUsersModalOpen(true)}
-        >
-          <CardHeader>
-            <CardTitle>Users</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <p className="text-2xl font-bold">150</p>
-            <p className="text-sm">Total Users</p>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="bg-gradient-to-r from-teal-500 to-teal-600 text-white cursor-pointer"
-          onClick={() => setIsBranchesModalOpen(true)}
-        >
-          <CardHeader>
-            <CardTitle>Branches</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <p className="text-2xl font-bold">25</p>
-            <p className="text-sm">Total Branches</p>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="bg-gradient-to-r from-orange-500 to-orange-600 text-white cursor-pointer"
-          onClick={() => setIsContactsModalOpen(true)}
-        >
-          <CardHeader>
-            <CardTitle>Contacts</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <p className="text-2xl font-bold">300</p>
-            <p className="text-sm">Total Contacts</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Users Modal */}
-      <Dialog open={isUsersModalOpen} onOpenChange={() => setIsUsersModalOpen(false)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Users List</DialogTitle>
-          </DialogHeader>
-          <div>
-            <ul>
-              {users.map((user, index) => (
-                <li key={index} className="py-1">{user}</li>
-              ))}
-            </ul>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Branches Modal */}
-      <Dialog open={isBranchesModalOpen} onOpenChange={() => setIsBranchesModalOpen(false)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Branches List</DialogTitle>
-          </DialogHeader>
-          <div>
-            <ul>
-              {branches.map((branch, index) => (
-                <li key={index} className="py-1">{branch}</li>
-              ))}
-            </ul>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Contacts Modal */}
-      <Dialog open={isContactsModalOpen} onOpenChange={() => setIsContactsModalOpen(false)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Contacts List</DialogTitle>
-          </DialogHeader>
-          <div>
-            <ul>
-              {contacts.map((contact, index) => (
-                <li key={index} className="py-1">{contact}</li>
-              ))}
-            </ul>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Courier Details Modal */}
-      <Dialog open={isCourierModalOpen} onOpenChange={() => {
-        setIsCourierModalOpen(false);
-        setSelectedCourier(null);
-      }}>
-        <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>{selectedCourier?.name}'s Deliveries</DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 overflow-auto mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order #</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Delivery Price</TableHead>
-                  <TableHead>Pickup Location</TableHead>
-                  <TableHead>Dropoff Location</TableHead>
-                  <TableHead>Received</TableHead>
-                  <TableHead>Picked Up</TableHead>
-                  <TableHead>On The Way</TableHead>
-                  <TableHead>Completed</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {selectedCourier?.orders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell>{order.orderNumber}</TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-700' :
-                        order.orderStatus === 'ReadyForPickup' ? 'bg-blue-100 text-blue-700' :
-                        order.orderStatus === 'Cancelled' ? 'bg-red-100 text-red-700' :
-                        order.orderStatus === 'Assigned' ? 'bg-yellow-100 text-yellow-700' :
-                        order.orderStatus === 'Pickup' ? 'bg-orange-100 text-orange-700' :
-                        order.orderStatus === 'OnTheWay' ? 'bg-purple-100 text-purple-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {order.orderStatus}
-                      </span>
-                    </TableCell>
-                    <TableCell>GH₵{Number(order.deliveryPrice).toFixed(2)}</TableCell>
-                    <TableCell>{order.pickupName}</TableCell>
-                    <TableCell>{order.dropoffName}</TableCell>
-                    <TableCell>{order.orderReceivedTime ? new Date(order.orderReceivedTime).toLocaleTimeString() : '-'}</TableCell>
-                    <TableCell>{order.orderPickedUpTime ? new Date(order.orderPickedUpTime).toLocaleTimeString() : '-'}</TableCell>
-                    <TableCell>{order.orderOnmywayTime ? new Date(order.orderOnmywayTime).toLocaleTimeString() : '-'}</TableCell>
-                    <TableCell>{order.orderCompletedTime ? new Date(order.orderCompletedTime).toLocaleTimeString() : '-'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Sonner position="top-right" />
     </div>
   );
 } 
