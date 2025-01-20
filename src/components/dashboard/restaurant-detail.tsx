@@ -135,7 +135,7 @@ interface Food {
   name: string;
   price: number;
   description: string;
-  image?: {
+  foodImage?: {
     url: string;
   };
 }
@@ -917,14 +917,14 @@ export default function RestaurantDetail() {
                 </Card>
 
                 {/* Users Section - Match hero height */}
-                <Card className="border border-gray-200 dark:border-gray-700 h-[300px] overflow-auto">
+                <Card className="border border-orange-600 dark:border-gray-700 h-[300px] overflow-auto">
                   <CardHeader className="border-b border-gray-200 dark:border-gray-700 p-4">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg">Users</CardTitle>
                       <Button 
                         onClick={() => setIsAddUserModalOpen(true)}
                         size="sm"
-                        className="gap-2 bg-black dark:bg-gray-800 text-white dark:text-white hover:bg-black/80 dark:hover:bg-gray-700"
+                        className="gap-2 bg-orange-600 dark:bg-gray-800 text-white dark:text-white hover:bg-black/80 dark:hover:bg-gray-700"
                       >
                         <UsersIcon className="h-4 w-4" />
                         Add User
@@ -945,7 +945,7 @@ export default function RestaurantDetail() {
                           onClick={() => setIsAddUserModalOpen(true)}
                           size="sm"
                           variant="outline"
-                          className="gap-2 border border-gray-200 dark:border-gray-700 shadow-none hover:bg-gray-50 dark:hover:bg-gray-800"
+                          className="gap-2 bg-blue-600 text-white border border-gray-200 dark:border-gray-700 shadow-none hover:bg-blue-800 dark:hover:bg-blue-800"
                         >
                           <UsersIcon className="h-3 w-3" />
                           Add First User
@@ -1097,8 +1097,8 @@ export default function RestaurantDetail() {
               </div>
 
               {/* Menu Section */}
-              <Card className="border border-gray-200 dark:border-gray-700">
-                <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+              <Card className="border border-gray-900 dark:border-gray-700">
+                <CardHeader className="border-b border-gray-900 dark:border-gray-700">
                   <CardTitle className="text-black dark:text-white">Menu Categories</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
@@ -1122,8 +1122,8 @@ export default function RestaurantDetail() {
                             key={index}
                             className={`cursor-pointer transition-all hover:shadow-lg ${
                               selectedCategory === menuType.foodType 
-                                ? 'border-2 border-green-500 dark:border-green-400' 
-                                : 'border border-gray-200 dark:border-gray-700'
+                                ? 'bg-white border-2 border-gray-500 dark:border-gray-900' 
+                                : 'border border-gray-500 dark:border-gray-700'
                             }`}
                             onClick={() => setSelectedCategory(
                               selectedCategory === menuType.foodType ? null : menuType.foodType
@@ -1140,7 +1140,7 @@ export default function RestaurantDetail() {
                                 )}
                                 <div>
                                   <h3 className="font-semibold">{menuType.foodType}</h3>
-                                  <p className="text-sm text-gray-500">
+                                  <p className="text-sm">
                                     {menuType.foods.length} items
                                   </p>
                                 </div>
@@ -1171,12 +1171,12 @@ export default function RestaurantDetail() {
                               ?.foods.map((food, foodIndex) => (
                                 <Card 
                                   key={foodIndex}
-                                  className="overflow-hidden hover:shadow-lg transition-shadow"
+                                  className="overflow-hidden bg-white hover:shadow-lg transition-shadow"
                                 >
-                                  {food.image && (
+                                  {food.foodImage && (
                                     <div className="h-48 overflow-hidden">
                                       <img 
-                                        src={food.image.url} 
+                                        src={food.foodImage.url} 
                                         alt={food.name}
                                         className="w-full h-full object-cover"
                                       />
