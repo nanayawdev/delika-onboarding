@@ -131,11 +131,31 @@ interface Order {
   dropOff: OrderLocation[];
 }
 
+interface Food {
+  name: string;
+  price: number;
+  description: string;
+  image?: {
+    url: string;
+  };
+}
+
+interface MenuType {
+  foodType: string;
+  foodTypeImage: {
+    url: string;
+  };
+  restaurantName: string;
+  branchName: string;
+  foods: Food[];
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const GET_RESTAURANTS_ENDPOINT = import.meta.env.VITE_GET_RESTAURANTS_ENDPOINT;
 const GET_BRANCHES_ENDPOINT = import.meta.env.VITE_GET_BRANCHES_ENDPOINT;
 const GET_USERS_ENDPOINT = import.meta.env.VITE_GET_USERS_ENDPOINT;
 const GET_ORDERS_ENDPOINT = import.meta.env.VITE_GET_ORDERS_ENDPOINT;
+const GET_MENU_ENDPOINT = import.meta.env.VITE_GET_MENU_ENDPOINT;
 
 export default function RestaurantDetail() {
   const location = useLocation()
@@ -188,6 +208,10 @@ export default function RestaurantDetail() {
     from: undefined,
     to: undefined
   })
+  const [menuItems, setMenuItems] = useState<MenuType[]>([])
+  const [isLoadingMenu, setIsLoadingMenu] = useState(false)
+  const [menuError, setMenuError] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
   const paginatedOrders = useMemo(() => {
     // First apply all filters
@@ -734,6 +758,44 @@ export default function RestaurantDetail() {
     setCurrentPage(page)
   }
 
+  useEffect(() => {
+    const fetchMenuItems = async () => {
+      if (!restaurant?.id || !selectedBranch?.id) return;
+      
+      setIsLoadingMenu(true);
+      setMenuError(null);
+      
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}${GET_MENU_ENDPOINT}`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              restaurantId: restaurant.id,
+              branchId: selectedBranch.id
+            })
+          }
+        );
+        
+        if (!response.ok) throw new Error('Failed to fetch menu items');
+        
+        const data = await response.json();
+        setMenuItems(data);
+      } catch (error) {
+        console.error('Error fetching menu:', error);
+        setMenuError('Failed to load menu items');
+      } finally {
+        setIsLoadingMenu(false);
+      }
+    };
+
+    fetchMenuItems();
+  }, [restaurant?.id, selectedBranch?.id]);
+
   if (!restaurant) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -1034,136 +1096,108 @@ export default function RestaurantDetail() {
                 </div>
               </div>
 
-              {/* Courier Section */}
-              <div className="mt-6">
-                <h2 className="text-lg font-semibold mb-4">Couriers</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {getCouriersList.map((courier) => (
-                    <Card 
-                      key={courier.name}
-                      className="cursor-pointer hover:shadow-lg transition-shadow bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-                      onClick={() => {
-                        setSelectedCourier(courier);
-                        setIsCourierModalOpen(true);
-                      }}
-                    >
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <div className="flex items-center gap-3">
-                          {courier.image ? (
-                            <img 
-                              src={courier.image.url} 
-                              alt={courier.name}
-                              className="h-8 w-8 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                              <User className="h-4 w-4 text-gray-500" />
-                            </div>
-                          )}
-                          <CardTitle className="text-sm font-medium">{courier.name}</CardTitle>
-                        </div>
-                        <User className="h-4 w-4 text-gray-500" />
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-gray-500">{courier.phoneNumber}</p>
-                        <div className="flex justify-between items-center mt-1">
-                          <p className="text-sm text-gray-500">{courier.orders.length} orders</p>
-                          <p className="text-sm font-medium text-green-600">
-                            GH₵{courier.orders.reduce((total, order) => total + (Number(order.deliveryPrice) || 0), 0).toFixed(2)}
-                          </p>
-                        </div>
-                        
-                        {/* Progress Line */}
-                        <div className="mt-4 relative">
-                          {/* Progress Lines */}
-                          <div className="flex gap-1 h-1 w-full">
-                            {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete], index, array) => (
-                              <div 
-                                key={status}
-                                className={`flex-1 rounded-full ${
-                                  isComplete 
-                                    ? status === 'Assigned' ? 'bg-blue-500'
-                                      : status === 'Pickup' ? 'bg-yellow-500'
-                                      : status === 'OnTheWay' ? 'bg-purple-500'
-                                      : 'bg-green-500'
-                                    : 'bg-gray-200 dark:bg-gray-700'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          
-                          {/* Status Labels */}
-                          <div className="flex justify-between mt-2">
-                            {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete]) => (
-                              <span key={status} className="text-xs text-gray-500">
-                                {status === 'Assigned' ? 'Assigned' :
-                                 status === 'Pickup' ? 'Picked Up' :
-                                 status === 'OnTheWay' ? 'On Way' :
-                                 'Completed'}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-
-                <Dialog open={isCourierModalOpen} onOpenChange={() => {
-                  setIsCourierModalOpen(false);
-                  setSelectedCourier(null);
-                }}>
-                  <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col">
-                    <DialogHeader>
-                      <DialogTitle>{selectedCourier?.name}'s Deliveries</DialogTitle>
-                    </DialogHeader>
-                    <div className="flex-1 overflow-auto mt-4">
-                      <Table>
-                        <TableHeader className="sticky top-0 bg-white dark:bg-gray-800">
-                          <TableRow>
-                            <TableHead>Order #</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Delivery Price</TableHead>
-                            <TableHead>Pickup Location</TableHead>
-                            <TableHead>Dropoff Location</TableHead>
-                            <TableHead>Received</TableHead>
-                            <TableHead>Picked Up</TableHead>
-                            <TableHead>On The Way</TableHead>
-                            <TableHead>Completed</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {selectedCourier?.orders.map((order) => (
-                            <TableRow key={order.id}>
-                              <TableCell>{order.orderNumber}</TableCell>
-                              <TableCell>
-                                <span className={`px-2 py-1 rounded-full text-xs ${
-                                  order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-700' :
-                                  order.orderStatus === 'ReadyForPickup' ? 'bg-blue-100 text-blue-700' :
-                                  order.orderStatus === 'Cancelled' ? 'bg-red-100 text-red-700' :
-                                  order.orderStatus === 'Assigned' ? 'bg-yellow-100 text-yellow-700' :
-                                  order.orderStatus === 'Pickup' ? 'bg-orange-100 text-orange-700' :
-                                  order.orderStatus === 'OnTheWay' ? 'bg-purple-100 text-purple-700' :
-                                  'bg-gray-100 text-gray-700'
-                                }`}>
-                                  {order.orderStatus}
-                                </span>
-                              </TableCell>
-                              <TableCell>GH₵{Number(order.deliveryPrice).toFixed(2)}</TableCell>
-                              <TableCell>{order.pickupName}</TableCell>
-                              <TableCell>{order.dropoffName}</TableCell>
-                              <TableCell>{order.orderReceivedTime ? new Date(order.orderReceivedTime).toLocaleTimeString() : '-'}</TableCell>
-                              <TableCell>{order.orderPickedUpTime ? new Date(order.orderPickedUpTime).toLocaleTimeString() : '-'}</TableCell>
-                              <TableCell>{order.orderOnmywayTime ? new Date(order.orderOnmywayTime).toLocaleTimeString() : '-'}</TableCell>
-                              <TableCell>{order.orderCompletedTime ? new Date(order.orderCompletedTime).toLocaleTimeString() : '-'}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+              {/* Menu Section */}
+              <Card className="border border-gray-200 dark:border-gray-700">
+                <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+                  <CardTitle className="text-black dark:text-white">Menu Categories</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {isLoadingMenu ? (
+                    <div className="flex items-center justify-center py-8">
+                      <LoadingSpinner className="h-6 w-6" />
                     </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
+                  ) : menuError ? (
+                    <div className="text-center py-8">
+                      <p className="text-red-500">{menuError}</p>
+                    </div>
+                  ) : menuItems.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">No menu items found</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {menuItems.map((menuType, index) => (
+                          <Card 
+                            key={index}
+                            className={`cursor-pointer transition-all hover:shadow-lg ${
+                              selectedCategory === menuType.foodType 
+                                ? 'border-2 border-green-500 dark:border-green-400' 
+                                : 'border border-gray-200 dark:border-gray-700'
+                            }`}
+                            onClick={() => setSelectedCategory(
+                              selectedCategory === menuType.foodType ? null : menuType.foodType
+                            )}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex items-center gap-3">
+                                {menuType.foodTypeImage && (
+                                  <img 
+                                    src={menuType.foodTypeImage.url} 
+                                    alt={menuType.foodType}
+                                    className="h-12 w-12 rounded-full object-cover"
+                                  />
+                                )}
+                                <div>
+                                  <h3 className="font-semibold">{menuType.foodType}</h3>
+                                  <p className="text-sm text-gray-500">
+                                    {menuType.foods.length} items
+                                  </p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+
+                      {/* Show menu items for selected category */}
+                      {selectedCategory && (
+                        <div className="mt-8">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold">
+                              {selectedCategory} Menu Items
+                            </h3>
+                            <Button
+                              variant="ghost"
+                              onClick={() => setSelectedCategory(null)}
+                              className="text-gray-500"
+                            >
+                              View All Categories
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {menuItems
+                              .find(menu => menu.foodType === selectedCategory)
+                              ?.foods.map((food, foodIndex) => (
+                                <Card 
+                                  key={foodIndex}
+                                  className="overflow-hidden hover:shadow-lg transition-shadow"
+                                >
+                                  {food.image && (
+                                    <div className="h-48 overflow-hidden">
+                                      <img 
+                                        src={food.image.url} 
+                                        alt={food.name}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
+                                  )}
+                                  <CardContent className="p-4">
+                                    <h4 className="font-semibold">{food.name}</h4>
+                                    <p className="text-sm text-gray-600 mt-1">{food.description}</p>
+                                    <p className="text-sm font-medium text-green-600 mt-2">
+                                      GH₵{Number(food.price).toFixed(2)}
+                                    </p>
+                                  </CardContent>
+                                </Card>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Branches Section */}
               <Card className="border border-gray-200 dark:border-gray-700">
@@ -1295,50 +1329,32 @@ export default function RestaurantDetail() {
                                 <p className="text-gray-500 dark:text-white">No orders found for this branch</p>
                               </div>
                             ) : (
-                              <div className="mb-6 space-y-4">
-                                {/* Search, Export, and Tabs Section */}
-                                <div className="mb-6 space-y-4">
-                                  <div className="flex items-center justify-between">
-                                    <div className="relative w-full md:w-96">
-                                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                      <Input
-                                        placeholder="Search orders..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="pl-8 text-black dark:text-white bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-700"
-                                      />
-                                    </div>
+                              <div className="space-y-4">
+                                {/* Search, Status Filter, Date Range, and Export */}
+                                <div className="flex items-center justify-between gap-4">
+                                  <div className="flex items-center gap-4">
+                                    <Input
+                                      placeholder="Search orders..."
+                                      value={searchQuery}
+                                      onChange={(e) => setSearchQuery(e.target.value)}
+                                      className="max-w-sm"
+                                    />
+                                    
+                                    <Select value={activeTab} onValueChange={setActiveTab}>
+                                      <SelectTrigger className="w-[180px] bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                                        <SelectValue placeholder="Filter by status" />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                                        <SelectItem value="All" className="hover:bg-gray-100 dark:hover:bg-gray-700">All Orders</SelectItem>
+                                        <SelectItem value="Delivered" className="hover:bg-gray-100 dark:hover:bg-gray-700">Delivered</SelectItem>
+                                        <SelectItem value="ReadyForPickup" className="hover:bg-gray-100 dark:hover:bg-gray-700">Ready for Pickup</SelectItem>
+                                        <SelectItem value="Cancelled" className="hover:bg-gray-100 dark:hover:bg-gray-700">Cancelled</SelectItem>
+                                        <SelectItem value="Assigned" className="hover:bg-gray-100 dark:hover:bg-gray-700">Assigned</SelectItem>
+                                        <SelectItem value="Pickup" className="hover:bg-gray-100 dark:hover:bg-gray-700">Pickup</SelectItem>
+                                        <SelectItem value="OnTheWay" className="hover:bg-gray-100 dark:hover:bg-gray-700">On The Way</SelectItem>
+                                      </SelectContent>
+                                    </Select>
 
-                                    <div className="flex items-center gap-4">
-                                      <Select value={activeTab} onValueChange={setActiveTab}>
-                                        <SelectTrigger className="w-[180px] bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                                          <SelectValue placeholder="Filter by status" />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                                          <SelectItem value="All" className="hover:bg-gray-100 dark:hover:bg-gray-700">All Orders</SelectItem>
-                                          <SelectItem value="Delivered" className="hover:bg-gray-100 dark:hover:bg-gray-700">Delivered</SelectItem>
-                                          <SelectItem value="ReadyForPickup" className="hover:bg-gray-100 dark:hover:bg-gray-700">Ready for Pickup</SelectItem>
-                                          <SelectItem value="Cancelled" className="hover:bg-gray-100 dark:hover:bg-gray-700">Cancelled</SelectItem>
-                                          <SelectItem value="Assigned" className="hover:bg-gray-100 dark:hover:bg-gray-700">Assigned</SelectItem>
-                                          <SelectItem value="Pickup" className="hover:bg-gray-100 dark:hover:bg-gray-700">Pickup</SelectItem>
-                                          <SelectItem value="OnTheWay" className="hover:bg-gray-100 dark:hover:bg-gray-700">On The Way</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-
-                                      <Button
-                                        onClick={handleExport}
-                                        className="bg-gray-900 dark:bg-gray-800 text-white hover:bg-gray-900/80 dark:hover:bg-gray-700/80 border border-gray-700 dark:border-gray-600"
-                                      >
-                                        Export Orders
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Date Range Picker */}
-                                <div className="space-y-4">
-                                  <div className="flex justify-between items-center">
-                                    <h3 className="text-lg font-semibold">Orders</h3>
                                     <Popover>
                                       <PopoverTrigger asChild>
                                         <Button variant="outline" className="flex items-center gap-2">
@@ -1357,10 +1373,7 @@ export default function RestaurantDetail() {
                                           )}
                                         </Button>
                                       </PopoverTrigger>
-                                      <PopoverContent 
-                                        className="w-auto p-0 bg-white dark:bg-gray-800 border dark:border-gray-700 shadow-md" 
-                                        align="end"
-                                      >
+                                      <PopoverContent className="w-auto p-0 bg-white border shadow-md" align="end">
                                         <DatePicker
                                           initialFocus
                                           mode="range"
@@ -1380,7 +1393,93 @@ export default function RestaurantDetail() {
                                     </Popover>
                                   </div>
 
-                                  {/* Orders table */}
+                                  <Button
+                                    onClick={handleExport}
+                                    className="bg-gray-900 dark:bg-gray-800 text-white hover:bg-gray-900/80 dark:hover:bg-gray-700/80 border border-gray-700 dark:border-gray-600"
+                                  >
+                                    Export Orders
+                                  </Button>
+                                </div>
+
+                                {/* Courier Section */}
+                                <div className="mt-6">
+                                  <h2 className="text-lg font-semibold mb-4">Couriers</h2>
+                                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    {getCouriersList.map((courier) => (
+                                      <Card 
+                                        key={courier.name}
+                                        className="cursor-pointer hover:shadow-lg transition-shadow bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                                        onClick={() => {
+                                          setSelectedCourier(courier);
+                                          setIsCourierModalOpen(true);
+                                        }}
+                                      >
+                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                          <div className="flex items-center gap-3">
+                                            {courier.image ? (
+                                              <img 
+                                                src={courier.image.url} 
+                                                alt={courier.name}
+                                                className="h-8 w-8 rounded-full object-cover"
+                                              />
+                                            ) : (
+                                              <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                                <User className="h-4 w-4 text-gray-500" />
+                                              </div>
+                                            )}
+                                            <CardTitle className="text-sm font-medium">{courier.name}</CardTitle>
+                                          </div>
+                                          <User className="h-4 w-4 text-gray-500" />
+                                        </CardHeader>
+                                        <CardContent>
+                                          <p className="text-sm text-gray-500">{courier.phoneNumber}</p>
+                                          <div className="flex justify-between items-center mt-1">
+                                            <p className="text-sm text-gray-500">{courier.orders.length} orders</p>
+                                            <p className="text-sm font-medium text-green-600">
+                                              GH₵{courier.orders.reduce((total, order) => total + (Number(order.deliveryPrice) || 0), 0).toFixed(2)}
+                                            </p>
+                                          </div>
+                                          
+                                          {/* Progress Line */}
+                                          <div className="mt-4 relative">
+                                            {/* Progress Lines */}
+                                            <div className="flex gap-1 h-1 w-full">
+                                              {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete], index, array) => (
+                                                <div 
+                                                  key={status}
+                                                  className={`flex-1 rounded-full ${
+                                                    isComplete 
+                                                      ? status === 'Assigned' ? 'bg-blue-500'
+                                                        : status === 'Pickup' ? 'bg-yellow-500'
+                                                        : status === 'OnTheWay' ? 'bg-purple-500'
+                                                        : 'bg-green-500'
+                                                      : 'bg-gray-200 dark:bg-gray-700'
+                                                  }`}
+                                                />
+                                              ))}
+                                            </div>
+                                            
+                                            {/* Status Labels */}
+                                            <div className="flex justify-between mt-2">
+                                              {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete]) => (
+                                                <span key={status} className="text-xs text-gray-500">
+                                                  {status === 'Assigned' ? 'Assigned' :
+                                                   status === 'Pickup' ? 'Picked Up' :
+                                                   status === 'OnTheWay' ? 'On Way' :
+                                                   'Completed'}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Orders Table */}
+                                <div className="mt-4">
+                                  <h3 className="text-lg font-semibold mb-4">Orders</h3>
                                   <Table>
                                     <TableHeader>
                                       <TableRow>
@@ -1458,38 +1557,6 @@ export default function RestaurantDetail() {
                                       ))}
                                     </TableBody>
                                   </Table>
-
-                                  {/* Pagination */}
-                                  <div className="flex justify-center mt-4">
-                                    <Pagination>
-                                      <PaginationContent>
-                                        <PaginationItem>
-                                          <PaginationPrevious 
-                                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                                            disabled={page === 1}
-                                          />
-                                        </PaginationItem>
-                                        
-                                        {Array.from({ length: Math.ceil(paginatedOrders.totalOrders / pageSize) }).map((_, i) => (
-                                          <PaginationItem key={i}>
-                                            <PaginationLink
-                                              onClick={() => setPage(i + 1)}
-                                              isActive={page === i + 1}
-                                            >
-                                              {i + 1}
-                                            </PaginationLink>
-                                          </PaginationItem>
-                                        ))}
-
-                                        <PaginationItem>
-                                          <PaginationNext
-                                            onClick={() => setPage(p => Math.min(Math.ceil(paginatedOrders.totalOrders / pageSize), p + 1))}
-                                            disabled={page === Math.ceil(paginatedOrders.totalOrders / pageSize)}
-                                          />
-                                        </PaginationItem>
-                                      </PaginationContent>
-                                    </Pagination>
-                                  </div>
                                 </div>
                               </div>
                             )}

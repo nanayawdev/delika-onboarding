@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from "@/components/ui/button"
 import logo from '@/assets/logo.png'
 import { toast } from 'sonner'
@@ -7,6 +7,7 @@ import { SignOutWarningModal } from '../dashboard/sign-out-warning-modal'
 
 export function Navbar() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false)
 
@@ -33,6 +34,8 @@ export function Navbar() {
     setIsSignOutModalOpen(false)
   }
 
+  const isActive = (path: string) => location.pathname === path
+
   return (
     <>
       <nav className="fixed top-4 left-1/2 -translate-x-1/2 w-[90%] max-w-3xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full z-40">
@@ -49,20 +52,26 @@ export function Navbar() {
               <Button 
                 onClick={() => handleProtectedNavigation('/overview', 'Overview')} 
                 variant="ghost" 
-                className="text-black dark:text-white hover:text-[#f24d1d]"
+                className={`text-black dark:text-white hover:text-[#f24d1d] ${
+                  isActive('/overview') ? 'text-orange-600 dark:bg-gray-700 font-medium' : ''
+                }`}
               >
                 Overview
               </Button>
               <Button 
                 onClick={() => handleProtectedNavigation('/dashboard', 'Restaurant Dashboard')} 
-                className="text-black dark:text-white hover:text-[#f24d1d] p-2 shadow-none"
+                className={`text-black dark:text-white hover:text-[#f24d1d] p-2 shadow-none ${
+                  isActive('/dashboard') ? 'text-orange-600 dark:bg-gray-700 font-medium' : ''
+                }`}
               >
                 Restaurants
               </Button>
               <Button 
                 onClick={() => handleProtectedNavigation('/broadcast', 'Broadcast')} 
                 variant="ghost" 
-                className="text-black dark:text-white hover:text-[#f24d1d]"
+                className={`text-black dark:text-white hover:text-[#f24d1d] ${
+                  isActive('/broadcast') ? 'text-orange-600 dark:bg-gray-700 font-medium' : ''
+                }`}
               >
                 Broadcast
               </Button>
