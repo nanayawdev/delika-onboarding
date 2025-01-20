@@ -36,6 +36,15 @@ import PurseIcon from '@/assets/icons/purse-stroke-rounded'
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Papa from 'papaparse'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+
 interface Restaurant {
   id: string
   restaurantName: string
@@ -164,9 +173,11 @@ export default function RestaurantDetail() {
   const [selectedCourier, setSelectedCourier] = useState(null);
   const [isCourierModalOpen, setIsCourierModalOpen] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1)
+  const ordersPerPage = 10 // You can adjust this number
 
-  const filteredOrders = useMemo(() => {
-    return branchOrders.filter(order => {
+  const paginatedOrders = useMemo(() => {
+    const filteredResults = branchOrders.filter(order => {
       const searchLower = searchQuery.toLowerCase()
       
       const matchesSearch = 
@@ -182,7 +193,17 @@ export default function RestaurantDetail() {
 
       return matchesSearch && matchesTab
     })
-  }, [branchOrders, searchQuery, activeTab])
+
+    // Calculate pagination
+    const lastOrderIndex = currentPage * ordersPerPage
+    const firstOrderIndex = lastOrderIndex - ordersPerPage
+
+    return {
+      orders: filteredResults.slice(firstOrderIndex, lastOrderIndex),
+      totalOrders: filteredResults.length,
+      totalPages: Math.ceil(filteredResults.length / ordersPerPage)
+    }
+  }, [branchOrders, searchQuery, activeTab, currentPage, ordersPerPage])
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -505,7 +526,7 @@ export default function RestaurantDetail() {
 
   // Update the export function to use filtered data
   const handleExport = () => {
-    const csvData = filteredOrders.map(order => ({
+    const csvData = paginatedOrders.orders.map(order => ({
       'Order Number': order.orderNumber,
       'Customer Name': order.customerName,
       'Customer Phone': order.customerPhoneNumber,
@@ -561,7 +582,7 @@ export default function RestaurantDetail() {
   }, []);
 
   const getCouriersList = useMemo(() => {
-    const couriers = filteredOrders.reduce((acc, order) => {
+    const couriers = paginatedOrders.orders.reduce((acc, order) => {
       if (order.courierName) {
         if (!acc[order.courierName]) {
           // Find the courier in allUsers
@@ -582,7 +603,7 @@ export default function RestaurantDetail() {
       return acc;
     }, {});
     return Object.values(couriers);
-  }, [filteredOrders, allUsers]);
+  }, [paginatedOrders.orders, allUsers]);
 
   // Add this helper function to get the latest order status
   const getOrderProgress = (orders) => {
@@ -678,6 +699,11 @@ export default function RestaurantDetail() {
       </Dialog>
     );
   };
+
+  // Add pagination handler
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
 
   if (!restaurant) {
     return (
@@ -1295,7 +1321,7 @@ export default function RestaurantDetail() {
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                    {filteredOrders.map((order) => (
+                                    {paginatedOrders.orders.map((order) => (
                                       <TableRow key={order.id}>
                                         <TableCell className="font-medium">
                                           {order.orderNumber}
@@ -1358,6 +1384,40 @@ export default function RestaurantDetail() {
                                     ))}
                                   </TableBody>
                                 </Table>
+
+                                {/* Add pagination after the table */}
+                                {paginatedOrders.totalOrders > 0 && (
+                                  <div className="flex justify-center mt-4">
+                                    <Pagination>
+                                      <PaginationContent>
+                                        <PaginationItem>
+                                          <PaginationPrevious 
+                                            onClick={() => handlePageChange(currentPage - 1)}
+                                            disabled={currentPage === 1}
+                                          />
+                                        </PaginationItem>
+                                        
+                                        {Array.from({ length: paginatedOrders.totalPages }, (_, i) => i + 1).map((page) => (
+                                          <PaginationItem key={page}>
+                                            <PaginationLink
+                                              onClick={() => handlePageChange(page)}
+                                              isActive={currentPage === page}
+                                            >
+                                              {page}
+                                            </PaginationLink>
+                                          </PaginationItem>
+                                        ))}
+
+                                        <PaginationItem>
+                                          <PaginationNext
+                                            onClick={() => handlePageChange(currentPage + 1)}
+                                            disabled={currentPage === paginatedOrders.totalPages}
+                                          />
+                                        </PaginationItem>
+                                      </PaginationContent>
+                                    </Pagination>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </CardContent>

@@ -75,6 +75,24 @@ export default function Overview() {
         </div>
       </header>
 
+      {/* Navigation Menu and Search Bar on the Same Line */}
+      <div className="flex justify-between items-center mb-4">
+        <nav>
+          <ul className="flex space-x-4">
+            <li className="text-gray-700 font-semibold">Overview</li>
+            <li className="text-gray-500">Customers</li>
+            <li className="text-gray-500">Products</li>
+            <li className="text-gray-500">Settings</li>
+          </ul>
+        </nav>
+
+        <input
+          type="text"
+          placeholder="Search..."
+          className="border rounded p-2 w-1/3 ml-4"
+        />
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card className="bg-white shadow-md">
           <CardHeader>

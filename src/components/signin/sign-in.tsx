@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
+import { OTPVerificationModal } from './otp-verification-modal'
+import { toast } from "sonner"
+import { Sonner } from "@/components/ui/sonner"
 
 interface SignInDetails {
   email: string
@@ -19,6 +22,7 @@ interface SignInResponse {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const SIGN_IN_ENDPOINT = import.meta.env.VITE_SIGN_IN_ENDPOINT;
+const SEND_OTP_ENDPOINT = import.meta.env.VITE_SEND_OTP_ENDPOINT;
 
 export default function SignIn() {
   const navigate = useNavigate()
@@ -28,6 +32,8 @@ export default function SignIn() {
   })
   const [errors, setErrors] = useState<Partial<SignInDetails>>({})
   const [isLoading, setIsLoading] = useState(false)
+  const [showOTPModal, setShowOTPModal] = useState(false)
+  const [tempAuthData, setTempAuthData] = useState<SignInResponse | null>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -72,13 +78,25 @@ export default function SignIn() {
         })
 
         const data: SignInResponse = await response.json()
-        console.log('Login response:', data)
 
         if (response.ok && data.authToken) {
-          // Store both auth token and user ID
-          localStorage.setItem('authToken', data.authToken)
-          localStorage.setItem('delikaOnboardingId', data.delika_onboarding_id)
-          navigate('/restaurant-onboarding')
+          setTempAuthData(data)
+          // Generate and send OTP
+          const otpResponse = await fetch(`${API_BASE_URL}${SEND_OTP_ENDPOINT}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: signInDetails.email
+            })
+          })
+
+          if (otpResponse.ok) {
+            setShowOTPModal(true)
+          } else {
+            throw new Error('Failed to send OTP')
+          }
         } else {
           setErrors(prev => ({
             ...prev,
@@ -87,13 +105,29 @@ export default function SignIn() {
         }
       } catch (error) {
         console.error('Sign in failed:', error)
-        setErrors(prev => ({
-          ...prev,
-          email: 'An error occurred during sign in'
-        }))
+        toast.error('An error occurred during sign in')
       } finally {
         setIsLoading(false)
       }
+    }
+  }
+
+  const handleOTPSuccess = () => {
+    if (tempAuthData) {
+      // Store auth data and navigate
+      localStorage.setItem('authToken', tempAuthData.authToken)
+      localStorage.setItem('delikaOnboardingId', tempAuthData.delika_onboarding_id)
+      
+      // Use requestAnimationFrame to handle state updates
+      requestAnimationFrame(() => {
+        setShowOTPModal(false)
+        toast.success('Successfully logged in!')
+        
+        // Navigate after a brief delay
+        setTimeout(() => {
+          navigate('/restaurant-onboarding')
+        }, 1000)
+      })
     }
   }
 
@@ -144,6 +178,14 @@ export default function SignIn() {
           </form>
         </Card>
       </div>
+
+      <OTPVerificationModal
+        isOpen={showOTPModal}
+        onClose={() => setShowOTPModal(false)}
+        onSuccess={handleOTPSuccess}
+        email={signInDetails.email}
+      />
+      <Sonner position="top-right" />
     </div>
   )
 } 

@@ -15,12 +15,12 @@ export function Navbar() {
     setIsLoggedIn(!!authToken)
   }, [])
 
-  const handleRestaurantClick = () => {
+  const handleProtectedNavigation = (path: string, itemName: string) => {
     if (!isLoggedIn) {
-      toast.error('Please sign in to access the restaurant dashboard.')
-      navigate('/signin') // Redirect to sign-in page
+      toast.error(`Please sign in to access ${itemName}.`)
+      navigate('/signin')
     } else {
-      navigate('/dashboard') // Navigate to restaurant dashboard
+      navigate(path)
     }
   }
 
@@ -28,7 +28,7 @@ export function Navbar() {
     localStorage.removeItem('authToken')
     localStorage.removeItem('delikaOnboardingId')
     setIsLoggedIn(false)
-    navigate('/') // Redirect to home or sign-in page after sign out
+    navigate('/')
     toast.success('You have been signed out.')
     setIsSignOutModalOpen(false)
   }
@@ -46,17 +46,31 @@ export function Navbar() {
 
             {/* Navigation Links */}
             <div className="flex items-center gap-2">
-              <Link to="/overview" className="text-black dark:text-white hover:text-[#f24d1d] p-2">
-                <Button variant="ghost">Overview</Button>
-              </Link>
-              <Button onClick={handleRestaurantClick} className="text-black dark:text-white hover:text-[#f24d1d] p-2 shadow-none">
+              <Button 
+                onClick={() => handleProtectedNavigation('/overview', 'Overview')} 
+                variant="ghost" 
+                className="text-black dark:text-white hover:text-[#f24d1d]"
+              >
+                Overview
+              </Button>
+              <Button 
+                onClick={() => handleProtectedNavigation('/dashboard', 'Restaurant Dashboard')} 
+                className="text-black dark:text-white hover:text-[#f24d1d] p-2 shadow-none"
+              >
                 Restaurants
               </Button>
-              <Link to="/broadcast" className="text-black dark:text-white hover:text-[#f24d1d] p-2">
-                <Button variant="ghost">Broadcast</Button>
-              </Link>
+              <Button 
+                onClick={() => handleProtectedNavigation('/broadcast', 'Broadcast')} 
+                variant="ghost" 
+                className="text-black dark:text-white hover:text-[#f24d1d]"
+              >
+                Broadcast
+              </Button>
               {isLoggedIn ? (
-                <Button onClick={() => setIsSignOutModalOpen(true)} className="bg-black dark:bg-gray-100 text-white dark:text-black hover:bg-[#f24d1d] dark:hover:bg-gray-200 rounded-full px-6 py-2">
+                <Button 
+                  onClick={() => setIsSignOutModalOpen(true)} 
+                  className="bg-black dark:bg-gray-100 text-white dark:text-black hover:bg-[#f24d1d] dark:hover:bg-gray-200 rounded-full px-6 py-2"
+                >
                   Sign Out
                 </Button>
               ) : (
