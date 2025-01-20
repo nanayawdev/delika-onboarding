@@ -1357,7 +1357,10 @@ export default function RestaurantDetail() {
                                           )}
                                         </Button>
                                       </PopoverTrigger>
-                                      <PopoverContent className="w-auto p-0" align="end">
+                                      <PopoverContent 
+                                        className="w-auto p-0 bg-white dark:bg-gray-800 border dark:border-gray-700 shadow-md" 
+                                        align="end"
+                                      >
                                         <DatePicker
                                           initialFocus
                                           mode="range"
@@ -1371,6 +1374,7 @@ export default function RestaurantDetail() {
                                             to: range?.to
                                           })}
                                           numberOfMonths={2}
+                                          className="rounded-md"
                                         />
                                       </PopoverContent>
                                     </Popover>
