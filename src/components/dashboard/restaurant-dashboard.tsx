@@ -185,7 +185,7 @@ export default function RestaurantDashboard() {
                   className="pl-8 text-black dark:text-white bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-700"
                 />
               </div>
-              <Button onClick={() => setIsAddModalOpen(true)} className="bg-gray-900 dark:bg-gray-800 text-white hover:bg-gray-900/80 dark:hover:bg-gray-700/80 border border-gray-700 dark:border-gray-600">
+              <Button onClick={() => setIsAddModalOpen(true)} className="bg-orange-600 dark:bg-gray-800 text-white hover:bg-gray-900/80 dark:hover:bg-gray-700/80 border border-orange-700 dark:border-gray-600">
                 Add Restaurant
               </Button>
             </div>
