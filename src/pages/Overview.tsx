@@ -16,6 +16,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { API_BASE_URL, GET_ORDERS_ENDPOINT } from "@/lib/constants";
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
+import Papa from 'papaparse';
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const GEOAPIFY_API_KEY = import.meta.env.VITE_GEOAPIFY_API_KEY;
@@ -30,12 +35,13 @@ interface Courier {
 interface Order {
   courierName: string;
   courierPhoneNumber: string;
+  customerName: string;
+  customerPhoneNumber: string;
   deliveryPrice: number;
   orderStatus: string;
   orderDate: string;
   deliveryDistance?: string;
   restaurantName: string;
-  customerName: string;
   totalPrice: number;
   pickupLocation: {
     lat: number;
@@ -53,6 +59,16 @@ interface CourierStats {
   totalRevenue: number;
 }
 
+interface Customer {
+  id: string;
+  name: string;
+  phoneNumber: string;
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderDate: string;
+  status: string;
+}
+
 export default function Overview() {
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
@@ -66,6 +82,11 @@ export default function Overview() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
+  const [customerError, setCustomerError] = useState<string | null>(null);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [customerFilter, setCustomerFilter] = useState('all');
 
   // Example restaurant data
   const restaurants = ["Restaurant A", "Restaurant B", "Restaurant C"];
@@ -492,6 +513,112 @@ export default function Overview() {
     };
   }, [orders]);
 
+  // Fetch all customers from orders
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        setIsLoadingCustomers(true);
+        setCustomerError(null);
+        const userId = localStorage.getItem('delikaOnboardingId');
+        
+        const response = await fetch(
+          `${API_BASE_URL}${GET_ORDERS_ENDPOINT}?filter[delika_onboarding_id][eq]=${userId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch orders');
+        }
+
+        const data = await response.json();
+        
+        // Process orders to get unique customers with their stats
+        const customerMap = new Map();
+        
+        data.forEach((order: Order) => {
+          if (!order.customerName || !order.customerPhoneNumber) return;
+          
+          const customerId = `${order.customerName}-${order.customerPhoneNumber}`;
+          const orderAmount = Number(order.totalPrice) || 0;
+          const orderDate = new Date(order.orderDate);
+          
+          if (customerMap.has(customerId)) {
+            const customer = customerMap.get(customerId);
+            customer.totalOrders += 1;
+            customer.totalSpent += orderAmount;
+            if (new Date(customer.lastOrderDate) < orderDate) {
+              customer.lastOrderDate = order.orderDate;
+            }
+          } else {
+            customerMap.set(customerId, {
+              id: customerId,
+              name: order.customerName,
+              phoneNumber: order.customerPhoneNumber,
+              totalOrders: 1,
+              totalSpent: orderAmount,
+              lastOrderDate: order.orderDate,
+              status: 'Active'
+            });
+          }
+        });
+
+        setCustomers(Array.from(customerMap.values()));
+      } catch (error) {
+        console.error('Error fetching customers:', error);
+        setCustomerError('Failed to load customers');
+      } finally {
+        setIsLoadingCustomers(false);
+      }
+    };
+
+    fetchCustomers();
+  }, []);
+
+  // Filter customers based on search and filter
+  const filteredCustomers = useMemo(() => {
+    return customers.filter(customer => {
+      const matchesSearch = 
+        customer.name.toLowerCase().includes(customerSearchQuery.toLowerCase()) ||
+        customer.phoneNumber.includes(customerSearchQuery);
+        
+      const matchesFilter = 
+        customerFilter === 'all' ||
+        (customerFilter === 'recent' && new Date(customer.lastOrderDate) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) ||
+        (customerFilter === 'frequent' && customer.totalOrders >= 5);
+        
+      return matchesSearch && matchesFilter;
+    });
+  }, [customers, customerSearchQuery, customerFilter]);
+
+  // Export customers to CSV
+  const handleExportCustomers = () => {
+    const csvData = filteredCustomers.map(customer => ({
+      'Customer Name': customer.name,
+      'Phone Number': customer.phoneNumber,
+      'Total Orders': customer.totalOrders,
+      'Total Spent (GH₵)': customer.totalSpent.toFixed(2),
+      'Last Order': new Date(customer.lastOrderDate).toLocaleDateString(),
+      'Status': customer.status
+    }));
+
+    const csv = Papa.unparse(csvData);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `customers-${new Date().toISOString()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="container mx-auto p-6 mt-10">
       <div className="flex justify-between items-center mb-8">
@@ -828,13 +955,18 @@ export default function Overview() {
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">Customers</h2>
               <div className="flex items-center space-x-4">
-                <input
-                  type="search"
-                  placeholder="Search customers..."
-                  className="px-4 py-2 border rounded-lg bg-gray-50 hover:bg-gray-100 focus:bg-white"
-                />
-                <Select defaultValue="all">
-                  <SelectTrigger className="w-[150px] bg-gray-50 border-gray-200 hover:bg-gray-100">
+                <div className="relative w-64">
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+                  <Input
+                    type="search"
+                    placeholder="Search customers..."
+                    value={customerSearchQuery}
+                    onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                    className="pl-8 bg-gray-50 hover:bg-gray-100 focus:bg-white"
+                  />
+                </div>
+                <Select value={customerFilter} onValueChange={setCustomerFilter}>
+                  <SelectTrigger className="w-[180px] bg-gray-50 border-gray-200 hover:bg-gray-100">
                     <SelectValue placeholder="Filter by" />
                   </SelectTrigger>
                   <SelectContent className="bg-white/95 backdrop-blur-sm">
@@ -843,48 +975,76 @@ export default function Overview() {
                     <SelectItem value="frequent">Frequent Buyers</SelectItem>
                   </SelectContent>
                 </Select>
+                <Button
+                  onClick={handleExportCustomers}
+                  className="bg-gray-900 text-white hover:bg-gray-900/80 border border-gray-700"
+                >
+                  Export Customers
+                </Button>
               </div>
             </div>
 
             <Card>
               <CardContent className="p-0">
                 <div className="relative overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs uppercase bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3">Customer</th>
-                        <th className="px-6 py-3">Total Orders</th>
-                        <th className="px-6 py-3">Total Spent</th>
-                        <th className="px-6 py-3">Last Order</th>
-                        <th className="px-6 py-3">Status</th>
-                        <th className="px-6 py-3">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="bg-white border-b hover:bg-gray-50">
-                        <td className="px-6 py-4 font-medium">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                              O
-                            </div>
-                            <span>Olivia Martin</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">24</td>
-                        <td className="px-6 py-4">GH₵4,200.00</td>
-                        <td className="px-6 py-4">2 hours ago</td>
-                        <td className="px-6 py-4">
-                          <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                            Active
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <button className="text-blue-600 hover:text-blue-900">View Details</button>
-                        </td>
-                      </tr>
-                      {/* Add more customer rows here */}
-                    </tbody>
-                  </table>
+                  {isLoadingCustomers ? (
+                    <div className="flex items-center justify-center py-8">
+                      <LoadingSpinner className="h-6 w-6" />
+                    </div>
+                  ) : customerError ? (
+                    <div className="text-center py-8 text-red-500">
+                      {customerError}
+                    </div>
+                  ) : filteredCustomers.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      No customers found
+                    </div>
+                  ) : (
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs uppercase bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3">Customer</th>
+                          <th className="px-6 py-3">Total Orders</th>
+                          <th className="px-6 py-3">Total Spent</th>
+                          <th className="px-6 py-3">Last Order</th>
+                          <th className="px-6 py-3">Status</th>
+                          <th className="px-6 py-3">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredCustomers.map((customer) => (
+                          <tr key={customer.id} className="bg-white border-b hover:bg-gray-50">
+                            <td className="px-6 py-4 font-medium">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                                  {customer.name.charAt(0)}
+                                </div>
+                                <div>
+                                  <div>{customer.name}</div>
+                                  <div className="text-sm text-gray-500">{customer.phoneNumber}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">{customer.totalOrders}</td>
+                            <td className="px-6 py-4">GH₵{customer.totalSpent.toFixed(2)}</td>
+                            <td className="px-6 py-4">
+                              {new Date(customer.lastOrderDate).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                {customer.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <button className="text-blue-600 hover:text-blue-900">
+                                View Orders
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </CardContent>
             </Card>
