@@ -3,8 +3,12 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BroadcastModal } from '@/components/dashboard/BroadcastModal'; // Adjust the import based on your project structure
+import { Trash2 } from "lucide-react"
+import { DeleteWarningModal } from '@/components/dashboard/delete-warning-modal'
+import { toast } from 'sonner';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // Access the API base URL directly
+const DELETE_BROADCAST_ENDPOINT = import.meta.env.VITE_DELETE_BROADCAST_ENDPOINT;
 
 const BroadcastList: React.FC = () => {
   const [broadcasts, setBroadcasts] = useState<any[]>([]);
@@ -12,6 +16,8 @@ const BroadcastList: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
+  const [broadcastToDelete, setBroadcastToDelete] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const fetchRestaurants = async () => {
     try {
@@ -57,6 +63,32 @@ const BroadcastList: React.FC = () => {
     fetchBroadcasts(); // Refresh the list after a new broadcast is created
   };
 
+  const handleDeleteBroadcast = async () => {
+    if (!broadcastToDelete) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}${DELETE_BROADCAST_ENDPOINT}/${broadcastToDelete}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (response.ok) {
+        toast.success('Broadcast deleted successfully');
+        fetchBroadcasts(); // Refresh the list
+      } else {
+        throw new Error('Failed to delete broadcast');
+      }
+    } catch (error) {
+      console.error('Error deleting broadcast:', error);
+      toast.error('Failed to delete broadcast');
+    } finally {
+      setIsDeleteModalOpen(false);
+      setBroadcastToDelete(null);
+    }
+  };
+
   if (isLoading) {
     return <LoadingSpinner className="h-6 w-6" />;
   }
@@ -84,7 +116,20 @@ const BroadcastList: React.FC = () => {
               />
             )}
             <div className="flex-1 p-4">
-              <h2 className="font-semibold">{broadcast.Header}</h2>
+              <div className="flex justify-between items-start">
+                <h2 className="font-semibold">{broadcast.Header}</h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setBroadcastToDelete(broadcast.id);
+                    setIsDeleteModalOpen(true);
+                  }}
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
               <p>{broadcast.Body}</p>
               {broadcast.Footer && <p className="text-gray-500">{broadcast.Footer}</p>}
               {broadcast.ExpiryDate && <p className="text-gray-400">Expires on: {new Date(broadcast.ExpiryDate).toLocaleDateString()}</p>}
@@ -107,6 +152,17 @@ const BroadcastList: React.FC = () => {
         onClose={() => setIsBroadcastModalOpen(false)}
         onSuccess={handleBroadcastSuccess}
         restaurants={restaurants}
+      />
+
+      <DeleteWarningModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setBroadcastToDelete(null);
+        }}
+        onConfirm={handleDeleteBroadcast}
+        title="Delete Broadcast"
+        description="Are you sure you want to delete this broadcast?"
       />
     </div>
   );

@@ -44,6 +44,10 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { format } from "date-fns"
+import { Calendar as CalendarIcon } from "lucide-react"
+import { Calendar as DatePicker } from "@/components/ui/calendar"
 
 interface Restaurant {
   id: string
@@ -175,11 +179,22 @@ export default function RestaurantDetail() {
   const [allUsers, setAllUsers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1)
   const ordersPerPage = 10 // You can adjust this number
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(10)
+  const [dateRange, setDateRange] = useState<{
+    from: Date | undefined
+    to: Date | undefined
+  }>({
+    from: undefined,
+    to: undefined
+  })
 
   const paginatedOrders = useMemo(() => {
+    // First apply all filters
     const filteredResults = branchOrders.filter(order => {
       const searchLower = searchQuery.toLowerCase()
       
+      // Search filter
       const matchesSearch = 
         String(order.orderNumber || '').toLowerCase().includes(searchLower) ||
         String(order.customerName || '').toLowerCase().includes(searchLower) ||
@@ -189,12 +204,26 @@ export default function RestaurantDetail() {
         String(order.pickupName || '').toLowerCase().includes(searchLower) ||
         String(order.dropoffName || '').toLowerCase().includes(searchLower)
 
+      // Status filter
       const matchesTab = activeTab === 'All' || order.orderStatus === activeTab
 
-      return matchesSearch && matchesTab
+      // Date filter
+      let matchesDate = true
+      if (dateRange.from || dateRange.to) {
+        const orderDate = new Date(order.orderDate)
+        if (dateRange.from && dateRange.to) {
+          matchesDate = orderDate >= dateRange.from && orderDate <= dateRange.to
+        } else if (dateRange.from) {
+          matchesDate = orderDate >= dateRange.from
+        } else if (dateRange.to) {
+          matchesDate = orderDate <= dateRange.to
+        }
+      }
+
+      return matchesSearch && matchesTab && matchesDate
     })
 
-    // Calculate pagination
+    // Then apply pagination
     const lastOrderIndex = currentPage * ordersPerPage
     const firstOrderIndex = lastOrderIndex - ordersPerPage
 
@@ -203,7 +232,7 @@ export default function RestaurantDetail() {
       totalOrders: filteredResults.length,
       totalPages: Math.ceil(filteredResults.length / ordersPerPage)
     }
-  }, [branchOrders, searchQuery, activeTab, currentPage, ordersPerPage])
+  }, [branchOrders, searchQuery, activeTab, currentPage, ordersPerPage, dateRange])
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -1306,118 +1335,158 @@ export default function RestaurantDetail() {
                                   </div>
                                 </div>
 
-                                {/* Table Section */}
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead>Order #</TableHead>
-                                      <TableHead>Customer</TableHead>
-                                      <TableHead>Courier</TableHead>
-                                      <TableHead>Status</TableHead>
-                                      <TableHead>Products</TableHead>
-                                      <TableHead>Delivery Details</TableHead>
-                                      <TableHead>Total</TableHead>
-                                      <TableHead>Date</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {paginatedOrders.orders.map((order) => (
-                                      <TableRow key={order.id}>
-                                        <TableCell className="font-medium">
-                                          {order.orderNumber}
-                                        </TableCell>
-                                        <TableCell>
-                                          <div className="space-y-1">
-                                            <p className="font-medium">{order.customerName}</p>
-                                            <p className="text-sm text-gray-500">{order.customerPhoneNumber}</p>
-                                          </div>
-                                        </TableCell>
-                                        <TableCell>
-                                          <div className="space-y-1">
-                                            <p className="font-medium">{order.courierName || 'Not assigned'}</p>
-                                            <p className="text-sm text-gray-500">{order.courierPhoneNumber || '-'}</p>
-                                          </div>
-                                        </TableCell>
-                                        <TableCell>
-                                          <span className={`px-2 py-1 rounded-full text-xs ${
-                                            order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-700' :
-                                            order.orderStatus === 'ReadyForPickup' ? 'bg-blue-100 text-blue-700' :
-                                            order.orderStatus === 'Cancelled' ? 'bg-red-100 text-red-700' :
-                                            order.orderStatus === 'Assigned' ? 'bg-yellow-100 text-yellow-700' :
-                                            order.orderStatus === 'Pickup' ? 'bg-orange-100 text-orange-700' :
-                                            order.orderStatus === 'OnTheWay' ? 'bg-purple-100 text-purple-700' :
-                                            'bg-gray-100 text-gray-700'
-                                          }`}>
-                                            {order.orderStatus}
-                                          </span>
-                                        </TableCell>
-                                        <TableCell>
-                                          <div className="space-y-1">
-                                            {order.products?.map((product, index) => (
-                                              <div key={index} className="text-sm">
-                                                {product.quantity}x {product.name} - GH₵{Number(product.price).toFixed(2)}
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </TableCell>
-                                        <TableCell>
-                                          <div className="space-y-1">
-                                            <p className="text-sm">From: {order.pickupName}</p>
-                                            <p className="text-sm">To: {order.dropoffName}</p>
-                                            <p className="text-xs text-gray-500">
-                                              {Number(order.deliveryDistance).toFixed(1)}km • GH₵{Number(order.deliveryPrice).toFixed(2)}
-                                            </p>
-                                          </div>
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                          GH₵{Number(order.totalPrice).toFixed(2)}
-                                        </TableCell>
-                                        <TableCell>
-                                          <div className="space-y-1">
-                                            <p className="text-sm">{new Date(order.orderDate).toLocaleDateString()}</p>
-                                            <p className="text-xs text-gray-500">
-                                              {new Date(order.created_at).toLocaleTimeString()}
-                                            </p>
-                                          </div>
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
+                                {/* Date Range Picker */}
+                                <div className="space-y-4">
+                                  <div className="flex justify-between items-center">
+                                    <h3 className="text-lg font-semibold">Orders</h3>
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <Button variant="outline" className="flex items-center gap-2">
+                                          <CalendarIcon className="h-4 w-4" />
+                                          {dateRange.from ? (
+                                            dateRange.to ? (
+                                              <>
+                                                {format(dateRange.from, "LLL dd, y")} -{" "}
+                                                {format(dateRange.to, "LLL dd, y")}
+                                              </>
+                                            ) : (
+                                              format(dateRange.from, "LLL dd, y")
+                                            )
+                                          ) : (
+                                            "Pick a date range"
+                                          )}
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-auto p-0" align="end">
+                                        <DatePicker
+                                          initialFocus
+                                          mode="range"
+                                          defaultMonth={dateRange.from}
+                                          selected={{
+                                            from: dateRange.from,
+                                            to: dateRange.to,
+                                          }}
+                                          onSelect={(range) => setDateRange({
+                                            from: range?.from,
+                                            to: range?.to
+                                          })}
+                                          numberOfMonths={2}
+                                        />
+                                      </PopoverContent>
+                                    </Popover>
+                                  </div>
 
-                                {/* Add pagination after the table */}
-                                {paginatedOrders.totalOrders > 0 && (
+                                  {/* Orders table */}
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead>Order #</TableHead>
+                                        <TableHead>Customer</TableHead>
+                                        <TableHead>Courier</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Products</TableHead>
+                                        <TableHead>Delivery Details</TableHead>
+                                        <TableHead>Total</TableHead>
+                                        <TableHead>Date</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {paginatedOrders.orders.map((order) => (
+                                        <TableRow key={order.id}>
+                                          <TableCell className="font-medium">
+                                            {order.orderNumber}
+                                          </TableCell>
+                                          <TableCell>
+                                            <div className="space-y-1">
+                                              <p className="font-medium">{order.customerName}</p>
+                                              <p className="text-sm text-gray-500">{order.customerPhoneNumber}</p>
+                                            </div>
+                                          </TableCell>
+                                          <TableCell>
+                                            <div className="space-y-1">
+                                              <p className="font-medium">{order.courierName || 'Not assigned'}</p>
+                                              <p className="text-sm text-gray-500">{order.courierPhoneNumber || '-'}</p>
+                                            </div>
+                                          </TableCell>
+                                          <TableCell>
+                                            <span className={`px-2 py-1 rounded-full text-xs ${
+                                              order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-700' :
+                                              order.orderStatus === 'ReadyForPickup' ? 'bg-blue-100 text-blue-700' :
+                                              order.orderStatus === 'Cancelled' ? 'bg-red-100 text-red-700' :
+                                              order.orderStatus === 'Assigned' ? 'bg-yellow-100 text-yellow-700' :
+                                              order.orderStatus === 'Pickup' ? 'bg-orange-100 text-orange-700' :
+                                              order.orderStatus === 'OnTheWay' ? 'bg-purple-100 text-purple-700' :
+                                              'bg-gray-100 text-gray-700'
+                                            }`}>
+                                              {order.orderStatus}
+                                            </span>
+                                          </TableCell>
+                                          <TableCell>
+                                            <div className="space-y-1">
+                                              {order.products?.map((product, index) => (
+                                                <div key={index} className="text-sm">
+                                                  {product.quantity}x {product.name} - GH₵{Number(product.price).toFixed(2)}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </TableCell>
+                                          <TableCell>
+                                            <div className="space-y-1">
+                                              <p className="text-sm">From: {order.pickupName}</p>
+                                              <p className="text-sm">To: {order.dropoffName}</p>
+                                              <p className="text-xs text-gray-500">
+                                                {Number(order.deliveryDistance).toFixed(1)}km • GH₵{Number(order.deliveryPrice).toFixed(2)}
+                                              </p>
+                                            </div>
+                                          </TableCell>
+                                          <TableCell className="font-medium">
+                                            GH₵{Number(order.totalPrice).toFixed(2)}
+                                          </TableCell>
+                                          <TableCell>
+                                            <div className="space-y-1">
+                                              <p className="text-sm">{new Date(order.orderDate).toLocaleDateString()}</p>
+                                              <p className="text-xs text-gray-500">
+                                                {new Date(order.created_at).toLocaleTimeString()}
+                                              </p>
+                                            </div>
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+
+                                  {/* Pagination */}
                                   <div className="flex justify-center mt-4">
                                     <Pagination>
                                       <PaginationContent>
                                         <PaginationItem>
                                           <PaginationPrevious 
-                                            onClick={() => handlePageChange(currentPage - 1)}
-                                            disabled={currentPage === 1}
+                                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                                            disabled={page === 1}
                                           />
                                         </PaginationItem>
                                         
-                                        {Array.from({ length: paginatedOrders.totalPages }, (_, i) => i + 1).map((page) => (
-                                          <PaginationItem key={page}>
+                                        {Array.from({ length: Math.ceil(paginatedOrders.totalOrders / pageSize) }).map((_, i) => (
+                                          <PaginationItem key={i}>
                                             <PaginationLink
-                                              onClick={() => handlePageChange(page)}
-                                              isActive={currentPage === page}
+                                              onClick={() => setPage(i + 1)}
+                                              isActive={page === i + 1}
                                             >
-                                              {page}
+                                              {i + 1}
                                             </PaginationLink>
                                           </PaginationItem>
                                         ))}
 
                                         <PaginationItem>
                                           <PaginationNext
-                                            onClick={() => handlePageChange(currentPage + 1)}
-                                            disabled={currentPage === paginatedOrders.totalPages}
+                                            onClick={() => setPage(p => Math.min(Math.ceil(paginatedOrders.totalOrders / pageSize), p + 1))}
+                                            disabled={page === Math.ceil(paginatedOrders.totalOrders / pageSize)}
                                           />
                                         </PaginationItem>
                                       </PaginationContent>
                                     </Pagination>
                                   </div>
-                                )}
+                                </div>
                               </div>
                             )}
                           </CardContent>

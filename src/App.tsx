@@ -8,6 +8,7 @@ import { Navbar } from '@/components/layout/navbar'
 import DarkModeToggle from '@/components/DarkModeToggle'
 import BroadcastList from '@/pages/BroadcastList'
 import Overview from '@/pages/overview'
+import ResetPassword from './pages/ResetPassword'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="/restaurant-onboarding" element={<RestaurantOnboarding />} />
         <Route path="/broadcast" element={<BroadcastList />} />
         <Route path="/overview" element={<Overview />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
     </Router>
   )
