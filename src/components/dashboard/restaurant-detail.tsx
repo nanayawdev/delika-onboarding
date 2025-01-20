@@ -48,6 +48,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { Calendar as DatePicker } from "@/components/ui/calendar"
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel"
 
 interface Restaurant {
   id: string
@@ -212,6 +219,9 @@ export default function RestaurantDetail() {
   const [isLoadingMenu, setIsLoadingMenu] = useState(false)
   const [menuError, setMenuError] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [menuSearchQuery, setMenuSearchQuery] = useState('')
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const itemsPerSlide = 5
 
   const paginatedOrders = useMemo(() => {
     // First apply all filters
@@ -796,6 +806,36 @@ export default function RestaurantDetail() {
     fetchMenuItems();
   }, [restaurant?.id, selectedBranch?.id]);
 
+  // Filter menu items based on search
+  const filteredMenuItems = useMemo(() => {
+    if (!selectedCategory) return [];
+    const categoryItems = menuItems.find(menu => menu.foodType === selectedCategory)?.foods || [];
+    
+    if (!menuSearchQuery) return categoryItems;
+    
+    return categoryItems.filter(food => 
+      food.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
+      food.description.toLowerCase().includes(menuSearchQuery.toLowerCase())
+    );
+  }, [selectedCategory, menuItems, menuSearchQuery]);
+
+  // Calculate total slides needed
+  const totalSlides = Math.ceil(filteredMenuItems.length / itemsPerSlide);
+
+  // Get current slide items
+  const currentSlideItems = filteredMenuItems.slice(
+    currentSlide * itemsPerSlide,
+    (currentSlide + 1) * itemsPerSlide
+  );
+
+  const nextSlide = () => {
+    setCurrentSlide(current => (current + 1) % totalSlides);
+  };
+
+  const previousSlide = () => {
+    setCurrentSlide(current => (current - 1 + totalSlides) % totalSlides);
+  };
+
   if (!restaurant) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -1157,40 +1197,61 @@ export default function RestaurantDetail() {
                             <h3 className="text-lg font-semibold">
                               {selectedCategory} Menu Items
                             </h3>
-                            <Button
-                              variant="ghost"
-                              onClick={() => setSelectedCategory(null)}
-                              className="text-gray-500"
-                            >
-                              View All Categories
-                            </Button>
+                            <div className="flex items-center gap-4">
+                              <div className="relative w-64">
+                                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+                                <Input
+                                  placeholder="Search menu items..."
+                                  value={menuSearchQuery}
+                                  onChange={(e) => setMenuSearchQuery(e.target.value)}
+                                  className="pl-8 border-gray-200 bg-gray-50"
+                                />
+                              </div>
+                              <Button
+                                variant="ghost"
+                                onClick={() => setSelectedCategory(null)}
+                                className="text-gray-500"
+                              >
+                                View All Categories
+                              </Button>
+                            </div>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            {menuItems
-                              .find(menu => menu.foodType === selectedCategory)
-                              ?.foods.map((food, foodIndex) => (
-                                <Card 
-                                  key={foodIndex}
-                                  className="overflow-hidden bg-white hover:shadow-lg transition-shadow"
-                                >
-                                  {food.foodImage && (
-                                    <div className="h-48 overflow-hidden">
-                                      <img 
-                                        src={food.foodImage.url} 
-                                        alt={food.name}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    </div>
-                                  )}
-                                  <CardContent className="p-4">
-                                    <h4 className="font-semibold">{food.name}</h4>
-                                    <p className="text-sm text-gray-600 mt-1">{food.description}</p>
-                                    <p className="text-sm font-medium text-green-600 mt-2">
-                                      GH₵{Number(food.price).toFixed(2)}
-                                    </p>
-                                  </CardContent>
-                                </Card>
-                            ))}
+
+                          <div className="relative px-12">
+                            <Carousel
+                              opts={{
+                                align: "start",
+                                loop: true,
+                              }}
+                              className="w-full"
+                            >
+                              <CarouselContent className="-ml-2 md:-ml-4">
+                                {filteredMenuItems.map((food, index) => (
+                                  <CarouselItem key={index} className="pl-2 md:pl-4 basis-1/5">
+                                    <Card className="overflow-hidden bg-white hover:shadow-lg transition-shadow">
+                                      {food.foodImage && (
+                                        <div className="h-48 overflow-hidden">
+                                          <img 
+                                            src={food.foodImage.url} 
+                                            alt={food.name}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        </div>
+                                      )}
+                                      <CardContent className="p-4">
+                                        <h4 className="font-semibold">{food.name}</h4>
+                                        <p className="text-sm text-gray-600 mt-1">{food.description}</p>
+                                        <p className="text-sm font-medium text-green-600 mt-2">
+                                          GH₵{Number(food.price).toFixed(2)}
+                                        </p>
+                                      </CardContent>
+                                    </Card>
+                                  </CarouselItem>
+                                ))}
+                              </CarouselContent>
+                              <CarouselPrevious className="absolute -left-4 top-1/2 transform -translate-y-1/2 bg-white border-gray-200 hover:bg-gray-100 shadow-md" />
+                              <CarouselNext className="absolute -right-4 top-1/2 transform -translate-y-1/2 bg-white border-gray-200 hover:bg-gray-100 shadow-md" />
+                            </Carousel>
                           </div>
                         </div>
                       )}
