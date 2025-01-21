@@ -1218,7 +1218,7 @@ export default function Overview() {
           {/* Restaurant Overview Section with Combined Filter */}
           <div className="mb-16">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Overview</h2>
+              <h2 className="text-2xl font-bold">Restaurant Overview</h2>
               <Select value={selectedOverviewMonth} onValueChange={setSelectedOverviewMonth}>
                 <SelectTrigger className="w-[180px] bg-gray-50 border-gray-200 hover:bg-gray-100">
                   <SelectValue />
@@ -1237,7 +1237,7 @@ export default function Overview() {
               </Select>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+              <Card className="bg-gray-900 text-white">
                 <CardHeader>
                   <CardTitle>Total Restaurants</CardTitle>
                 </CardHeader>
@@ -1250,7 +1250,7 @@ export default function Overview() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+              <Card className="bg-gray-900 text-white">
                 <CardHeader>
                   <CardTitle>Most Active</CardTitle>
                 </CardHeader>
@@ -1269,7 +1269,7 @@ export default function Overview() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
+              <Card className="bg-gray-900 text-white">
                 <CardHeader>
                   <CardTitle>Highest Revenue</CardTitle>
                 </CardHeader>
@@ -1288,7 +1288,7 @@ export default function Overview() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
+              <Card className="bg-gray-900 text-white">
                 <CardHeader>
                   <CardTitle>Average Orders</CardTitle>
                 </CardHeader>
