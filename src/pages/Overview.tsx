@@ -13,7 +13,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { DollarSign, TrendingUp, Users, Route, MapPin, Phone, User, Building2, ChartBar } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { API_BASE_URL, GET_ORDERS_ENDPOINT, GET_RESTAURANTS_ENDPOINT } from "@/lib/constants";
+import { API_BASE_URL, GET_ORDERS_ENDPOINT, GET_RESTAURANTS_ENDPOINT, GET_ALL_MENU_ENDPOINT, GET_BRANCHES_ENDPOINT } from "@/lib/constants";
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ import Papa from 'papaparse';
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";   
+import { Badge } from "@/components/ui/badge";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const GEOAPIFY_API_KEY = import.meta.env.VITE_GEOAPIFY_API_KEY;
@@ -90,6 +91,26 @@ interface CustomerOrder {
   dropoffName: string;
 }
 
+interface MenuType {
+  foodType: string;
+  foodTypeImage: {
+    url: string;
+  };
+  restaurantName: string;
+  branchName: string;
+  foods: Food[];
+}
+
+interface Food {
+  name: string;
+  price: number;
+  description: string;
+  quantity: number;
+  foodImage?: {
+    url: string;
+  };
+}
+
 export default function Overview() {
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
@@ -119,6 +140,11 @@ export default function Overview() {
   const [isLoadingCustomerOrders, setIsLoadingCustomerOrders] = useState(false);
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [isLoadingRestaurants, setIsLoadingRestaurants] = useState(false);
+  const [menuItems, setMenuItems] = useState<MenuType[]>([]);
+  const [isLoadingMenu, setIsLoadingMenu] = useState(false);
+  const [menuError, setMenuError] = useState<string | null>(null);
+  const [selectedFoodType, setSelectedFoodType] = useState<string>('all');
+  const [menuSearchQuery, setMenuSearchQuery] = useState('');
 
   // Calculate earnings data from orders with its own filter
   const earningsData = useMemo(() => {
@@ -130,27 +156,25 @@ export default function Overview() {
              orderDate.getMonth() === parseInt(month) - 1;
     });
 
-    // Calculate daily earnings for the selected month
-    const dailyData = filteredOrders.reduce((acc: any[], order) => {
-      const date = new Date(order.orderDate);
-      const day = date.getDate();
-      const existingDay = acc.find(item => item.day === day);
-      
-      if (existingDay) {
-        existingDay.earnings += Number(order.deliveryPrice) || 0;
-        existingDay.orders += 1;
-      } else {
-        acc.push({
-          day,
-          earnings: Number(order.deliveryPrice) || 0,
-          orders: 1
-        });
-      }
-      return acc;
-    }, []);
+    // Get the number of days in the selected month
+    const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
 
-    // Sort by day
-    return dailyData.sort((a, b) => a.day - b.day);
+    // Create an array with all days of the month
+    const dailyData = Array.from({ length: daysInMonth }, (_, index) => {
+      const day = index + 1;
+      const dayOrders = filteredOrders.filter(order => {
+        const orderDate = new Date(order.orderDate);
+        return orderDate.getDate() === day;
+      });
+
+      return {
+        day,
+        earnings: dayOrders.reduce((sum, order) => sum + (Number(order.deliveryPrice) || 0), 0),
+        orders: dayOrders.length
+      };
+    });
+
+    return dailyData;
   }, [orders, selectedOverviewMonth]);
 
   // Mock active couriers data
@@ -832,6 +856,80 @@ export default function Overview() {
     fetchRestaurants();
   }, []);
 
+  // Fetch menu items from all restaurants
+  useEffect(() => {
+    const fetchAllMenuItems = async () => {
+      try {
+        setIsLoadingMenu(true);
+        setMenuError(null);
+        const userId = localStorage.getItem('delikaOnboardingId');
+
+        const response = await fetch(
+          `${API_BASE_URL}${GET_ALL_MENU_ENDPOINT}`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch menu items');
+        }
+
+        const menuData = await response.json();
+        // Filter out menu items with empty foodType and empty foods array
+        const validMenuItems = menuData.filter((item: MenuType) => 
+          item.foodType && item.foodType.trim() !== '' && 
+          item.foods && item.foods.length > 0
+        );
+        setMenuItems(validMenuItems);
+      } catch (error) {
+        console.error('Error fetching menu items:', error);
+        setMenuError('Failed to load menu items');
+      } finally {
+        setIsLoadingMenu(false);
+      }
+    };
+
+    fetchAllMenuItems();
+  }, []);
+
+  // Get unique food types and ensure they're not empty strings
+  const foodTypes = useMemo(() => {
+    const types = new Set<string>();
+    menuItems.forEach(item => {
+      if (item.foodType && item.foodType.trim() !== '') {
+        types.add(item.foodType);
+      }
+    });
+    return ['all', ...Array.from(types)];
+  }, [menuItems]);
+
+  // Filter menu items by type and search query
+  const filteredMenuItems = useMemo(() => {
+    let items = menuItems;
+    
+    if (selectedFoodType !== 'all') {
+      items = items.filter(item => item.foodType === selectedFoodType);
+    }
+    
+    if (menuSearchQuery) {
+      items = items.map(item => ({
+        ...item,
+        foods: item.foods.filter(food => 
+          food.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
+          food.description.toLowerCase().includes(menuSearchQuery.toLowerCase())
+        )
+      })).filter(item => item.foods.length > 0);
+    }
+    
+    return items;
+  }, [menuItems, selectedFoodType, menuSearchQuery]);
+
   return (
     <div className="container mx-auto p-6 mt-32">
       <div className="flex justify-between items-center mb-8">
@@ -1265,8 +1363,7 @@ export default function Overview() {
                             sale.status === 'Completed' ? 'bg-green-100 text-green-800' :
                             sale.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
                             sale.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
-                            'bg-blue-100 text-blue-800'
-                          }`}>
+                            'bg-blue-100 text-blue-800'}`}>
                             {sale.status}
                           </span>
                         </td>
@@ -1421,8 +1518,89 @@ export default function Overview() {
         </TabsContent>
 
         <TabsContent value="products">
-          <div className="flex items-center justify-center h-[400px] text-gray-500">
-            Products content coming soon
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Menu Items</h2>
+              <div className="flex items-center gap-4">
+                <div className="relative w-64">
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+                  <Input
+                    placeholder="Search menu items..."
+                    value={menuSearchQuery}
+                    onChange={(e) => setMenuSearchQuery(e.target.value)}
+                    className="pl-8 border-gray-200 bg-gray-50"
+                  />
+                </div>
+                <Select value={selectedFoodType} onValueChange={setSelectedFoodType}>
+                  <SelectTrigger className="w-[180px] bg-gray-50 border-gray-200 hover:bg-gray-100">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white/95 backdrop-blur-sm">
+                    {foodTypes.map((type) => (
+                      type && type.trim() !== '' && (
+                        <SelectItem key={type} value={type}>
+                          {type === 'all' ? 'All Categories' : type}
+                        </SelectItem>
+                      )
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {isLoadingMenu ? (
+              <div className="flex items-center justify-center py-8">
+                <LoadingSpinner className="h-6 w-6" />
+              </div>
+            ) : menuError ? (
+              <div className="text-center py-8">
+                <p className="text-red-500">{menuError}</p>
+              </div>
+            ) : filteredMenuItems.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No menu items found</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {filteredMenuItems.map((menuType) => (
+                  menuType.foods.map((food) => (
+                    <Card key={food.name} className="overflow-hidden hover:shadow-lg transition-shadow bg-white">
+                      {food.foodImage && (
+                        <div className="h-48 overflow-hidden">
+                          <img 
+                            src={food.foodImage.url} 
+                            alt={food.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h4 className="font-semibold truncate max-w-[150px]" title={food.name}>{food.name}</h4>
+                            <p className="text-sm text-gray-500 truncate max-w-[150px]" title={menuType.restaurantName}>
+                              {menuType.restaurantName || 'Unknown Restaurant'}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="ml-2 shrink-0">{menuType.foodType}</Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1 line-clamp-2" title={food.description}>
+                          {food.description}
+                        </p>
+                        <div className="flex justify-between items-center mt-3">
+                          <p className="text-sm font-medium text-green-600">
+                            GH₵{Number(food.price).toFixed(2)}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Qty: {food.quantity || 0}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ))}
+              </div>
+            )}
           </div>
         </TabsContent>
 
