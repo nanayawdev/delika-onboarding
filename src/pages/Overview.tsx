@@ -10,10 +10,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { DollarSign, TrendingUp, Users, Route, MapPin, Phone, User } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { DollarSign, TrendingUp, Users, Route, MapPin, Phone, User, Building2, ChartBar } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { API_BASE_URL, GET_ORDERS_ENDPOINT } from "@/lib/constants";
+import { API_BASE_URL, GET_ORDERS_ENDPOINT, GET_RESTAURANTS_ENDPOINT } from "@/lib/constants";
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import Papa from 'papaparse';
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "sonner";   
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const GEOAPIFY_API_KEY = import.meta.env.VITE_GEOAPIFY_API_KEY;
@@ -43,6 +45,14 @@ interface Order {
   deliveryDistance?: string;
   restaurantName: string;
   totalPrice: number;
+  orderNumber: string;
+  dropoffName: string;
+  restaurantId: string;
+  products: Array<{
+    quantity: number;
+    name: string;
+    price: number;
+  }>;
   pickupLocation: {
     lat: number;
     lng: number;
@@ -69,6 +79,17 @@ interface Customer {
   status: string;
 }
 
+interface CustomerOrder {
+  orderNumber: string;
+  restaurantName: string;
+  items: string[];
+  totalPrice: number;
+  deliveryPrice: number;
+  orderStatus: string;
+  orderDate: string;
+  dropoffName: string;
+}
+
 export default function Overview() {
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
@@ -87,18 +108,45 @@ export default function Overview() {
   const [customerError, setCustomerError] = useState<string | null>(null);
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [customerFilter, setCustomerFilter] = useState('all');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [customerOrders, setCustomerOrders] = useState<CustomerOrder[]>([]);
+  const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
+  const [isLoadingCustomerOrders, setIsLoadingCustomerOrders] = useState(false);
+  const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [isLoadingRestaurants, setIsLoadingRestaurants] = useState(false);
 
-  // Example restaurant data
-  const restaurants = ["Restaurant A", "Restaurant B", "Restaurant C"];
+  // Calculate earnings data from orders
+  const earningsData = useMemo(() => {
+    // Filter orders by selected month
+    const [year, month] = selectedMonth.split('-');
+    const filteredOrders = orders.filter(order => {
+      const orderDate = new Date(order.orderDate);
+      return orderDate.getFullYear() === parseInt(year) && 
+             orderDate.getMonth() === parseInt(month) - 1;
+    });
 
-  // Mock earnings data
-  const earningsData = [
-    { month: 'Jan', earnings: 5000 },
-    { month: 'Feb', earnings: 7500 },
-    { month: 'Mar', earnings: 6000 },
-    { month: 'Apr', earnings: 8000 },
-    { month: 'May', earnings: 9500 },
-  ];
+    // Calculate daily earnings for the selected month
+    const dailyData = filteredOrders.reduce((acc: any[], order) => {
+      const date = new Date(order.orderDate);
+      const day = date.getDate();
+      const existingDay = acc.find(item => item.day === day);
+      
+      if (existingDay) {
+        existingDay.earnings += Number(order.deliveryPrice) || 0;
+        existingDay.orders += 1;
+      } else {
+        acc.push({
+          day,
+          earnings: Number(order.deliveryPrice) || 0,
+          orders: 1
+        });
+      }
+      return acc;
+    }, []);
+
+    // Sort by day
+    return dailyData.sort((a, b) => a.day - b.day);
+  }, [orders, selectedMonth]);
 
   // Mock active couriers data
   const activeCouriers = [
@@ -366,19 +414,76 @@ export default function Overview() {
     );
   };
 
+  // Calculate restaurant metrics
+  const restaurantMetrics = useMemo(() => {
+    const totalRestaurants = restaurants.length;
+    
+    // Filter orders by selected month
+    const [year, month] = selectedMonth.split('-');
+    const filteredOrders = orders.filter(order => {
+      const orderDate = new Date(order.orderDate);
+      return orderDate.getFullYear() === parseInt(year) && 
+             orderDate.getMonth() === parseInt(month) - 1;
+    });
+    
+    // Calculate orders per restaurant
+    const restaurantOrders = filteredOrders.reduce((acc: { [key: string]: number }, order) => {
+      const restaurantId = order.restaurantId;
+      acc[restaurantId] = (acc[restaurantId] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Find most active restaurant
+    const mostActiveRestaurant = Object.entries(restaurantOrders)
+      .sort(([, a], [, b]) => b - a)[0];
+
+    const mostActiveRestaurantName = mostActiveRestaurant
+      ? restaurants.find(r => r.id === mostActiveRestaurant[0])?.restaurantName
+      : 'N/A';
+
+    // Calculate total revenue per restaurant
+    const restaurantRevenue = filteredOrders.reduce((acc: { [key: string]: number }, order) => {
+      const restaurantId = order.restaurantId;
+      acc[restaurantId] = (acc[restaurantId] || 0) + (Number(order.totalPrice) || 0);
+      return acc;
+    }, {});
+
+    // Find highest revenue restaurant
+    const highestRevenue = Object.entries(restaurantRevenue)
+      .sort(([, a], [, b]) => b - a)[0];
+
+    const highestRevenueRestaurantName = highestRevenue
+      ? restaurants.find(r => r.id === highestRevenue[0])?.restaurantName
+      : 'N/A';
+
+    return {
+      totalRestaurants,
+      mostActiveRestaurant: {
+        name: mostActiveRestaurantName,
+        orders: mostActiveRestaurant ? mostActiveRestaurant[1] : 0
+      },
+      highestRevenue: {
+        name: highestRevenueRestaurantName,
+        amount: highestRevenue ? highestRevenue[1] : 0
+      },
+      averageOrdersPerRestaurant: totalRestaurants 
+        ? (filteredOrders.length / totalRestaurants).toFixed(1) 
+        : 0
+    };
+  }, [restaurants, orders, selectedMonth]);
+
   // Group orders by restaurant for Recent Sales
   const recentSalesByRestaurant = useMemo(() => {
-    const today = new Date();
-    const thirtyDaysAgo = new Date(today.setDate(today.getDate() - 30));
-    
-    // Filter orders from the last 30 days
-    const recentOrders = orders.filter(order => {
+    // Filter orders by selected month
+    const [year, month] = selectedMonth.split('-');
+    const filteredOrders = orders.filter(order => {
       const orderDate = new Date(order.orderDate);
-      return orderDate >= thirtyDaysAgo;
+      return orderDate.getFullYear() === parseInt(year) && 
+             orderDate.getMonth() === parseInt(month) - 1;
     });
-
+    
     // Group by restaurant
-    return recentOrders.reduce((acc: { [key: string]: any[] }, order) => {
+    return filteredOrders.reduce((acc: { [key: string]: any[] }, order) => {
       const restaurantName = order.restaurantName || 'Unknown Restaurant';
       if (!acc[restaurantName]) {
         acc[restaurantName] = [];
@@ -391,11 +496,31 @@ export default function Overview() {
       });
       return acc;
     }, {});
-  }, [orders]);
+  }, [orders, selectedMonth]);
+
+  // Add styles for the map
+  const mapStyle = `
+    .delivery-marker {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background-color: #4CAF50;
+      border: 2px solid white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .maplibregl-map {
+      border-radius: 0.5rem;
+    }
+  `;
 
   // Initialize map when orders are loaded
   useEffect(() => {
     if (!mapRef.current || !orders.length) return;
+
+    // Add styles to head
+    const styleSheet = document.createElement("style");
+    styleSheet.textContent = mapStyle;
+    document.head.appendChild(styleSheet);
 
     // Clear any existing map
     mapRef.current.innerHTML = '';
@@ -406,10 +531,6 @@ export default function Overview() {
     mapContainer.style.height = '100%';
     mapRef.current.appendChild(mapContainer);
 
-    // Initialize map
-    const myAPIKey = GEOAPIFY_API_KEY;
-    const mapStyle = 'osm-bright-smooth';
-
     // Extract delivery locations from orders with valid coordinates
     const deliveryLocations = orders
       .filter(order => 
@@ -419,8 +540,7 @@ export default function Overview() {
       )
       .map(order => ({
         lat: order.dropoffLocation.lat,
-        lon: order.dropoffLocation.lng,
-        type: 'delivery'
+        lon: order.dropoffLocation.lng
       }));
 
     // Only proceed if we have valid locations
@@ -444,7 +564,7 @@ export default function Overview() {
     // Initialize the map
     const map = new maplibregl.Map({
       container: mapContainer,
-      style: `https://maps.geoapify.com/v1/styles/${mapStyle}/style.json?apiKey=${myAPIKey}`,
+      style: `https://maps.geoapify.com/v1/styles/osm-bright-smooth/style.json?apiKey=${GEOAPIFY_API_KEY}`,
       center: [center.lon, center.lat],
       zoom: 11
     });
@@ -453,12 +573,6 @@ export default function Overview() {
     deliveryLocations.forEach(location => {
       const markerElement = document.createElement('div');
       markerElement.className = 'delivery-marker';
-      markerElement.style.width = '20px';
-      markerElement.style.height = '20px';
-      markerElement.style.borderRadius = '50%';
-      markerElement.style.backgroundColor = '#4CAF50';
-      markerElement.style.border = '2px solid white';
-      markerElement.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
 
       new maplibregl.Marker(markerElement)
         .setLngLat([location.lon, location.lat])
@@ -510,8 +624,9 @@ export default function Overview() {
     // Cleanup function
     return () => {
       map.remove();
+      document.head.removeChild(styleSheet);
     };
-  }, [orders]);
+  }, [orders, GEOAPIFY_API_KEY]);
 
   // Fetch all customers from orders
   useEffect(() => {
@@ -619,8 +734,94 @@ export default function Overview() {
     window.URL.revokeObjectURL(url);
   };
 
+  const handleViewOrders = async (customer: Customer) => {
+    try {
+      setIsLoadingCustomerOrders(true);
+      setSelectedCustomer(customer);
+      setIsOrdersModalOpen(true);
+      
+      const userId = localStorage.getItem('delikaOnboardingId');
+      const response = await fetch(
+        `${API_BASE_URL}${GET_ORDERS_ENDPOINT}?filter[delika_onboarding_id][eq]=${userId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch orders');
+      }
+
+      const data = await response.json();
+      
+      // Filter orders for this customer
+      const customerOrders = data
+        .filter((order: Order) => 
+          order.customerName === customer.name && 
+          order.customerPhoneNumber === customer.phoneNumber
+        )
+        .map((order: Order) => ({
+          orderNumber: order.orderNumber || 'N/A',
+          restaurantName: order.restaurantName,
+          items: order.products?.map(p => `${p.quantity}x ${p.name}`) || [],
+          totalPrice: Number(order.totalPrice) || 0,
+          deliveryPrice: Number(order.deliveryPrice) || 0,
+          orderStatus: order.orderStatus,
+          orderDate: order.orderDate,
+          dropoffName: order.dropoffName || 'N/A'
+        }))
+        .sort((a: CustomerOrder, b: CustomerOrder) => 
+          new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()
+        );
+
+      setCustomerOrders(customerOrders);
+    } catch (error) {
+      console.error('Error fetching customer orders:', error);
+      toast.error('Failed to load customer orders');
+    } finally {
+      setIsLoadingCustomerOrders(false);
+    }
+  };
+
+  // Fetch restaurants
+  useEffect(() => {
+    const fetchRestaurants = async () => {
+      try {
+        setIsLoadingRestaurants(true);
+        const userId = localStorage.getItem('delikaOnboardingId');
+        const response = await fetch(
+          `${API_BASE_URL}${GET_RESTAURANTS_ENDPOINT}?filter[delika_onboarding_id][eq]=${userId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch restaurants');
+        }
+
+        const data = await response.json();
+        setRestaurants(data);
+      } catch (error) {
+        console.error('Error fetching restaurants:', error);
+      } finally {
+        setIsLoadingRestaurants(false);
+      }
+    };
+
+    fetchRestaurants();
+  }, []);
+
   return (
-    <div className="container mx-auto p-6 mt-10">
+    <div className="container mx-auto p-6 mt-32">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Dashboard</h1>
       </div>
@@ -847,29 +1048,146 @@ export default function Overview() {
           </div>
 
           <div className="mb-16">
+            <h2 className="text-2xl font-bold mb-6">Restaurants Overview</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+                <CardHeader>
+                  <CardTitle>Total Restaurants</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center">
+                    <p className="text-2xl font-bold">{restaurantMetrics.totalRestaurants}</p>
+                    <Building2 className="h-6 w-6 text-white/80" />
+                  </div>
+                  <p className="text-sm text-white/80">Active restaurants</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                <CardHeader>
+                  <CardTitle>Most Active</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-2xl font-bold truncate max-w-[180px]">
+                        {restaurantMetrics.mostActiveRestaurant.name}
+                      </p>
+                      <p className="text-sm text-white/80">
+                        {restaurantMetrics.mostActiveRestaurant.orders} orders
+                      </p>
+                    </div>
+                    <TrendingUp className="h-6 w-6 text-white/80" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
+                <CardHeader>
+                  <CardTitle>Highest Revenue</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-2xl font-bold truncate max-w-[180px]">
+                        {restaurantMetrics.highestRevenue.name}
+                      </p>
+                      <p className="text-sm text-white/80">
+                        GH₵{restaurantMetrics.highestRevenue.amount.toFixed(2)}
+                      </p>
+                    </div>
+                    <DollarSign className="h-6 w-6 text-white/80" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
+                <CardHeader>
+                  <CardTitle>Average Orders</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-2xl font-bold">
+                        {restaurantMetrics.averageOrdersPerRestaurant}
+                      </p>
+                      <p className="text-sm text-white/80">Orders per restaurant</p>
+                    </div>
+                    <ChartBar className="h-6 w-6 text-white/80" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          <div className="mb-16">
             <h2 className="text-2xl font-bold mb-6">Overview</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={earningsData}>
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="earnings" fill="#4caf50" />
-              </BarChart>
-            </ResponsiveContainer>
+            <Card className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold">Monthly Earnings</h3>
+                <div className="text-sm text-gray-500">
+                  Last {earningsData.length} months
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={earningsData}>
+                  <XAxis dataKey="day" />
+                  <YAxis 
+                    tickFormatter={(value) => `GH₵${value.toFixed(0)}`}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => [`GH₵${value.toFixed(2)}`, 'Earnings']}
+                    labelFormatter={(label) => `${label}`}
+                  />
+                  <Bar 
+                    dataKey="earnings" 
+                    fill="#4caf50"
+                    radius={[4, 4, 0, 0]}
+                  >
+                    {earningsData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`}
+                        fill={entry.day === new Date().getDate() ? '#2e7d32' : '#4caf50'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="mt-4 grid grid-cols-2 gap-4">
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-500">Total Earnings</p>
+                  <p className="text-xl font-semibold">
+                    GH₵{earningsData.reduce((sum, item) => sum + item.earnings, 0).toFixed(2)}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-500">Total Orders</p>
+                  <p className="text-xl font-semibold">
+                    {earningsData.reduce((sum, item) => sum + item.orders, 0)}
+                  </p>
+                </div>
+              </div>
+            </Card>
           </div>
 
           {/* Recent Sales Section */}
           <div className="mb-16">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Recent Sales</h2>
-              <Select defaultValue="today">
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                 <SelectTrigger className="w-[180px] bg-gray-50 border-gray-200 hover:bg-gray-100">
-                  <SelectValue placeholder="Select period" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white/95 backdrop-blur-sm">
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="yesterday">Yesterday</SelectItem>
-                  <SelectItem value="week">This Week</SelectItem>
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() - i);
+                    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    const label = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+                    return (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -1036,7 +1354,10 @@ export default function Overview() {
                               </span>
                             </td>
                             <td className="px-6 py-4">
-                              <button className="text-blue-600 hover:text-blue-900">
+                              <button 
+                                className="text-blue-600 hover:text-blue-900"
+                                onClick={() => handleViewOrders(customer)}
+                              >
                                 View Orders
                               </button>
                             </td>
@@ -1063,6 +1384,77 @@ export default function Overview() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isOrdersModalOpen} onOpenChange={setIsOrdersModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                {selectedCustomer?.name.charAt(0)}
+              </div>
+              <div>
+                <div>{selectedCustomer?.name}</div>
+                <div className="text-sm text-gray-500">{selectedCustomer?.phoneNumber}</div>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+
+          {isLoadingCustomerOrders ? (
+            <div className="flex items-center justify-center py-8">
+              <LoadingSpinner className="h-6 w-6" />
+            </div>
+          ) : customerOrders.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No orders found for this customer
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {customerOrders.map((order, index) => (
+                <Card key={index} className="bg-white">
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-medium">{order.restaurantName}</p>
+                        <p className="text-sm text-gray-500">
+                          Order #{order.orderNumber}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">GH₵{order.totalPrice.toFixed(2)}</p>
+                        <p className="text-sm text-gray-500">
+                          Delivery: GH₵{order.deliveryPrice.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <div className="space-y-1">
+                          <p className="text-gray-500">Items:</p>
+                          {order.items.map((item, i) => (
+                            <p key={i}>{item}</p>
+                          ))}
+                        </div>
+                        <div className="text-right space-y-1">
+                          <p>Delivered to: {order.dropoffName}</p>
+                          <p>{new Date(order.orderDate).toLocaleString()}</p>
+                          <span className={`px-2 py-1 rounded-full text-xs
+                            ${order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-800' :
+                              order.orderStatus === 'Cancelled' ? 'bg-red-100 text-red-800' :
+                              'bg-blue-100 text-blue-800'}`}>
+                            {order.orderStatus}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 
