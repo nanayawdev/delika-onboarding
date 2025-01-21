@@ -1121,12 +1121,30 @@ export default function Overview() {
           </div>
 
           <div className="mb-16">
-            <h2 className="text-2xl font-bold mb-6">Overview</h2>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Overview</h2>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-[180px] bg-gray-50 border-gray-200 hover:bg-gray-100">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white/95 backdrop-blur-sm">
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() - i);
+                    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    const label = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+                    return (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
             <Card className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-semibold">Monthly Earnings</h3>
                 <div className="text-sm text-gray-500">
-                  Last {earningsData.length} months
+                  Last {earningsData.length} days
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={300}>
@@ -1191,47 +1209,58 @@ export default function Overview() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {Object.entries(recentSalesByRestaurant).map(([restaurant, sales]) => (
-                <Card key={restaurant} className="bg-white overflow-hidden">
-                  <CardHeader className="border-b bg-gray-50/50">
-                    <div className="flex justify-between items-center">
-                      <CardTitle className="text-lg">{restaurant}</CardTitle>
-                      <span className="text-sm text-gray-500">{sales.length} orders</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    {sales.slice(0, 5).map((sale, index) => (
-                      <div key={index} 
-                           className={`p-4 flex justify-between items-center hover:bg-gray-50 transition-colors
-                                    ${index !== sales.length - 1 ? 'border-b border-gray-100' : ''}`}>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                            {sale.customer.charAt(0)}
-                          </div>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+              {restaurants.map((restaurant) => {
+                const sales = recentSalesByRestaurant[restaurant.restaurantName] || [];
+                return (
+                  <Card key={restaurant.id} className="bg-white overflow-hidden">
+                    <CardHeader className="border-b bg-gray-50/50">
+                      <div className="flex justify-between items-center">
+                        <CardTitle className="text-lg truncate" title={restaurant.restaurantName}>
+                          {restaurant.restaurantName}
+                        </CardTitle>
+                        <span className="text-sm text-gray-500">{sales.length} orders</span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      {sales.slice(0, 5).map((sale, index) => (
+                        <div key={index} 
+                             className={`p-4 flex justify-between items-center hover:bg-gray-50 transition-colors
+                                      ${index !== sales.length - 1 ? 'border-b border-gray-100' : ''}`}>
                           <div>
-                            <p className="font-medium">{sale.customer}</p>
+                            <p className="font-medium truncate max-w-[150px]" title={sale.customer}>
+                              {sale.customer}
+                            </p>
                             <p className="text-sm text-gray-500">
-                              {new Date(sale.date).toLocaleString()}
+                              {new Date(sale.date).toLocaleString('default', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                              })}
                             </p>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <span className="font-semibold text-green-600">
-                            GH₵{Number(sale.amount).toFixed(2)}
-                          </span>
-                          <div className={`text-xs mt-1 px-2 py-1 rounded-full inline-block
-                            ${sale.status === 'Delivered' ? 'bg-green-100 text-green-800' :
+                          <div className="text-right">
+                            <p className="font-medium">GH₵{sale.amount.toFixed(2)}</p>
+                            <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                              sale.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                              sale.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
                               sale.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
-                              'bg-blue-100 text-blue-800'}`}>
-                            {sale.status}
+                              'bg-blue-100 text-blue-800'
+                            }`}>
+                              {sale.status}
+                            </span>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              ))}
+                      ))}
+                      {sales.length === 0 && (
+                        <div className="p-4 text-center text-gray-500">
+                          No sales this month
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
 
