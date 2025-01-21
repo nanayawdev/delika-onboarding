@@ -99,10 +99,6 @@ export default function Overview() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
-  const [selectedRestaurantMonth, setSelectedRestaurantMonth] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  });
   const [selectedOverviewMonth, setSelectedOverviewMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -423,12 +419,12 @@ export default function Overview() {
     );
   };
 
-  // Calculate restaurant metrics with its own filter
+  // Calculate restaurant metrics using the same filter as overview
   const restaurantMetrics = useMemo(() => {
     const totalRestaurants = restaurants.length;
     
     // Filter orders by selected month
-    const [year, month] = selectedRestaurantMonth.split('-');
+    const [year, month] = selectedOverviewMonth.split('-');
     const filteredOrders = orders.filter(order => {
       const orderDate = new Date(order.orderDate);
       return orderDate.getFullYear() === parseInt(year) && 
@@ -479,7 +475,7 @@ export default function Overview() {
         ? (filteredOrders.length / totalRestaurants).toFixed(1) 
         : 0
     };
-  }, [restaurants, orders, selectedRestaurantMonth]);
+  }, [restaurants, orders, selectedOverviewMonth]);
 
   // Group orders by restaurant for Recent Sales with restaurant filter
   const recentSalesByRestaurant = useMemo(() => {
@@ -1063,8 +1059,27 @@ export default function Overview() {
             </div>
           </div>
 
+          {/* Restaurant Overview Section with Combined Filter */}
           <div className="mb-16">
-            <h2 className="text-2xl font-bold mb-6">Restaurants Overview</h2>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Overview</h2>
+              <Select value={selectedOverviewMonth} onValueChange={setSelectedOverviewMonth}>
+                <SelectTrigger className="w-[180px] bg-gray-50 border-gray-200 hover:bg-gray-100">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white/95 backdrop-blur-sm">
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() - i);
+                    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    const label = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+                    return (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
                 <CardHeader>
@@ -1136,26 +1151,9 @@ export default function Overview() {
             </div>
           </div>
 
+          {/* Overview Graph Section - No Filter Needed */}
           <div className="mb-16">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Overview</h2>
-              <Select value={selectedOverviewMonth} onValueChange={setSelectedOverviewMonth}>
-                <SelectTrigger className="w-[180px] bg-gray-50 border-gray-200 hover:bg-gray-100">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white/95 backdrop-blur-sm">
-                  {Array.from({ length: 12 }, (_, i) => {
-                    const date = new Date();
-                    date.setMonth(date.getMonth() - i);
-                    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                    const label = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-                    return (
-                      <SelectItem key={value} value={value}>{label}</SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
+            <h2 className="text-2xl font-bold mb-6">Monthly Earnings</h2>
             <Card className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-semibold">Monthly Earnings</h3>
