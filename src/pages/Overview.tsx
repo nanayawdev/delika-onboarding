@@ -152,6 +152,11 @@ export default function Overview() {
   const [customersPage, setCustomersPage] = useState(1);
   const recentSalesPerPage = 10;
   const customersPerPage = 10;
+  // Add new state for rewards
+  const [selectedRewardsMonth, setSelectedRewardsMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   // Calculate earnings data from orders with its own filter
   const earningsData = useMemo(() => {
@@ -541,22 +546,7 @@ export default function Overview() {
     }, {});
   }, [orders, selectedMonth, selectedRecentSalesRestaurant]);
 
-  // Add styles for the map
-  const mapStyle = `
-    .delivery-marker {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background-color: #4CAF50;
-      border: 2px solid white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    .maplibregl-map {
-      border-radius: 0.5rem;
-    }
-  `;
-
-  // Initialize map when orders are loaded
+  // Update the map initialization useEffect
   useEffect(() => {
     if (!mapRef.current || !orders.length) return;
 
@@ -583,14 +573,15 @@ export default function Overview() {
       )
       .map(order => ({
         lat: order.dropoffLocation.lat,
-        lon: order.dropoffLocation.lng
+        lon: order.dropoffLocation.lng,
+        weight: 1 // Add weight for heatmap
       }));
 
     // Only proceed if we have valid locations
     if (deliveryLocations.length === 0) {
       const noDataMessage = document.createElement('div');
       noDataMessage.className = 'flex items-center justify-center h-full text-gray-500';
-      noDataMessage.textContent = 'No valid location data available';
+      noDataMessage.textContent = 'No delivery location data available';
       mapRef.current.appendChild(noDataMessage);
       return;
     }
@@ -604,7 +595,7 @@ export default function Overview() {
       { lat: 0, lon: 0 }
     );
 
-    // Initialize the map
+    // Initialize the map with Geoapify
     const map = new maplibregl.Map({
       container: mapContainer,
       style: `https://maps.geoapify.com/v1/styles/osm-bright-smooth/style.json?apiKey=${GEOAPIFY_API_KEY}`,
@@ -612,11 +603,11 @@ export default function Overview() {
       zoom: 11
     });
 
-    // Add markers for each location
+    // Add markers for each delivery location
     deliveryLocations.forEach(location => {
       const markerElement = document.createElement('div');
       markerElement.className = 'delivery-marker';
-
+      
       new maplibregl.Marker(markerElement)
         .setLngLat([location.lon, location.lat])
         .addTo(map);
@@ -631,7 +622,9 @@ export default function Overview() {
             type: 'FeatureCollection',
             features: deliveryLocations.map(loc => ({
               type: 'Feature',
-              properties: {},
+              properties: {
+                weight: loc.weight
+              },
               geometry: {
                 type: 'Point',
                 coordinates: [loc.lon, loc.lat]
@@ -645,24 +638,51 @@ export default function Overview() {
           type: 'heatmap',
           source: 'delivery-points',
           paint: {
-            'heatmap-weight': 1,
-            'heatmap-intensity': 1,
+            // Increase the heatmap weight based on frequency of deliveries
+            'heatmap-weight': ['get', 'weight'],
+            // Increase the heatmap color weight by zoom level
+            'heatmap-intensity': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              0, 1,
+              9, 3
+            ],
+            // Color ramp for heatmap.
             'heatmap-color': [
               'interpolate',
               ['linear'],
               ['heatmap-density'],
-              0, 'rgba(0, 0, 255, 0)',
-              0.2, 'rgba(0, 255, 255, 0.5)',
-              0.4, 'rgba(0, 255, 0, 0.7)',
-              0.6, 'rgba(255, 255, 0, 0.8)',
-              0.8, 'rgba(255, 0, 0, 0.9)',
-              1, 'rgba(255, 0, 0, 1)'
+              0, 'rgba(33,102,172,0)',
+              0.2, 'rgb(103,169,207)',
+              0.4, 'rgb(209,229,240)',
+              0.6, 'rgb(253,219,199)',
+              0.8, 'rgb(239,138,98)',
+              1, 'rgb(178,24,43)'
             ],
-            'heatmap-radius': 30
+            // Adjust the heatmap radius by zoom level
+            'heatmap-radius': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              0, 2,
+              9, 20
+            ],
+            // Transition from heatmap to circle layer by zoom level
+            'heatmap-opacity': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              7, 1,
+              9, 0.5
+            ]
           }
         });
       });
     }
+
+    // Add navigation controls
+    map.addControl(new maplibregl.NavigationControl());
 
     // Cleanup function
     return () => {
@@ -670,6 +690,24 @@ export default function Overview() {
       document.head.removeChild(styleSheet);
     };
   }, [orders, GEOAPIFY_API_KEY]);
+
+  // Update the map styles
+  const mapStyle = `
+    .delivery-marker {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: #ef4444;
+      border: 2px solid white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .maplibregl-map {
+      border-radius: 0.5rem;
+    }
+    .maplibregl-control-container {
+      margin: 10px;
+    }
+  `;
 
   // Fetch all customers from orders
   useEffect(() => {
@@ -988,6 +1026,150 @@ export default function Overview() {
     };
   }, [filteredCustomers, customersPage]);
 
+  // Calculate rewards data
+  const rewardsData = useMemo(() => {
+    // Filter orders by selected month
+    const [year, month] = selectedRewardsMonth.split('-');
+    const filteredOrders = orders.filter(order => {
+      const orderDate = new Date(order.orderDate);
+      return orderDate.getFullYear() === parseInt(year) && 
+             orderDate.getMonth() === parseInt(month) - 1;
+    });
+
+    // Calculate points (1 point for every GH₵1 spent)
+    const pointsPerCedi = 1;
+    const totalSpent = filteredOrders.reduce((sum, order) => sum + Number(order.totalPrice), 0);
+    const totalPoints = Math.floor(totalSpent * pointsPerCedi);
+    
+    // Calculate points per customer
+    const customerPoints = filteredOrders.reduce((acc, order) => {
+      const customerId = `${order.customerName}-${order.customerPhoneNumber}`;
+      const points = Math.floor(Number(order.totalPrice) * pointsPerCedi);
+      
+      if (!acc[customerId]) {
+        acc[customerId] = {
+          name: order.customerName,
+          points: 0,
+          totalSpent: 0,
+          orders: 0
+        };
+      }
+      
+      acc[customerId].points += points;
+      acc[customerId].totalSpent += Number(order.totalPrice);
+      acc[customerId].orders += 1;
+      
+      return acc;
+    }, {} as Record<string, { name: string; points: number; totalSpent: number; orders: number; }>);
+
+    // Get top earners
+    const topEarners = Object.values(customerPoints)
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 5)
+      .map(customer => ({
+        ...customer,
+        level: customer.points >= 2000 ? "Gold" : customer.points >= 1000 ? "Silver" : "Bronze"
+      }));
+
+    // Calculate courier performance
+    const courierDeliveries = filteredOrders.reduce((acc, order) => {
+      if (!order.courierName) return acc;
+      
+      if (!acc[order.courierName]) {
+        acc[order.courierName] = {
+          name: order.courierName,
+          deliveries: 0,
+          points: 0,
+          totalEarned: 0
+        };
+      }
+      
+      acc[order.courierName].deliveries += 1;
+      acc[order.courierName].points += Math.floor(Number(order.deliveryPrice) * pointsPerCedi);
+      acc[order.courierName].totalEarned += Number(order.deliveryPrice);
+      
+      return acc;
+    }, {} as Record<string, { name: string; deliveries: number; points: number; totalEarned: number; }>);
+
+    // Calculate restaurant performance
+    const restaurantPerformance = filteredOrders.reduce((acc, order) => {
+      // Skip if no restaurant ID or total price
+      if (!order.restaurantId || !order.totalPrice) return acc;
+      
+      // Find restaurant name from restaurants array
+      const restaurant = restaurants.find(r => r.id === order.restaurantId);
+      if (!restaurant) return acc;
+      
+      // Log each order for debugging
+      console.log('Processing order:', {
+        restaurantId: order.restaurantId,
+        restaurantName: restaurant.restaurantName,
+        totalPrice: order.totalPrice,
+        orderDate: order.orderDate
+      });
+      
+      const restaurantKey = restaurant.restaurantName;
+      const orderTotal = Number(order.totalPrice);
+      const points = Math.floor(orderTotal * pointsPerCedi);
+      
+      if (!acc[restaurantKey]) {
+        acc[restaurantKey] = {
+          name: restaurant.restaurantName,
+          points: 0,
+          totalRevenue: 0,
+          orders: 0,
+          averageOrderValue: 0
+        };
+      }
+      
+      acc[restaurantKey].points += points;
+      acc[restaurantKey].totalRevenue += orderTotal;
+      acc[restaurantKey].orders += 1;
+      acc[restaurantKey].averageOrderValue = acc[restaurantKey].totalRevenue / acc[restaurantKey].orders;
+      
+      return acc;
+    }, {} as Record<string, { 
+      name: string; 
+      points: number; 
+      totalRevenue: number; 
+      orders: number; 
+      averageOrderValue: number; 
+    }>);
+
+    // Get top restaurants
+    const topRestaurants = Object.entries(restaurantPerformance)
+      .filter(([_, restaurant]) => restaurant.name && restaurant.name.trim() !== '')
+      .map(([_, restaurant]) => restaurant)
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 3);
+
+    // Log for debugging
+    console.log('Filtered Orders:', filteredOrders.map(o => ({ 
+      restaurantId: o.restaurantId,
+      restaurantName: restaurants.find(r => r.id === o.restaurantId)?.restaurantName,
+      totalPrice: o.totalPrice,
+      orderDate: o.orderDate 
+    })));
+    console.log('Restaurants:', restaurants);
+    console.log('Restaurant Performance Object:', restaurantPerformance);
+    console.log('Top Restaurants Array:', topRestaurants);
+
+    // Get top couriers
+    const topCouriers = Object.values(courierDeliveries)
+      .sort((a, b) => b.deliveries - a.deliveries)
+      .slice(0, 3);
+
+    return {
+      pointsIssued: totalPoints,
+      pointsValue: totalPoints * 0.1, // GH₵0.1 per point
+      topEarners,
+      topCouriers,
+      topRestaurants,
+      totalOrders: filteredOrders.length,
+      totalRevenue: totalSpent
+    };
+  }, [orders, selectedRewardsMonth, restaurants]);
+
   return (
     <div className="container mx-auto p-6 mt-32">
       <div className="flex justify-between items-center mb-8">
@@ -1000,7 +1182,7 @@ export default function Overview() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="customers">Customers</TabsTrigger>
             <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="rewards">Rewards</TabsTrigger>
           </TabsList>
         </div>
 
@@ -1710,9 +1892,224 @@ export default function Overview() {
           </div>
         </TabsContent>
 
-        <TabsContent value="settings">
-          <div className="flex items-center justify-center h-[400px] text-gray-500">
-            Settings content coming soon
+        <TabsContent value="rewards">
+          <div className="space-y-8">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Rewards & Loyalty</h2>
+              <Select value={selectedRewardsMonth} onValueChange={setSelectedRewardsMonth}>
+                <SelectTrigger className="w-[180px] bg-gray-50 border-gray-200 hover:bg-gray-100">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white/95 backdrop-blur-sm">
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() - i);
+                    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    const label = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+                    return (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Points Overview Section */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Points Overview</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Points System Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Points System</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-gray-500">Current Rate</p>
+                        <p className="font-medium">1 point = GH₵0.1</p>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-gray-500">Points Issued</p>
+                        <p className="font-medium">{rewardsData.pointsIssued.toLocaleString()}</p>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-gray-500">Points Value</p>
+                        <p className="font-medium">GH₵{rewardsData.pointsValue.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Monthly Performance Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Monthly Performance</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <p className="text-sm text-gray-500">Total Orders</p>
+                          <p className="font-medium">{rewardsData.totalOrders}</p>
+                        </div>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <p className="text-sm text-gray-500">Total Revenue</p>
+                          <p className="font-medium">GH₵{rewardsData.totalRevenue.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Reward Tiers Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Reward Tiers</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="p-3 border border-yellow-200 bg-yellow-50 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <p className="font-medium text-yellow-800">Gold</p>
+                          <p className="text-sm text-yellow-800">2000+ points</p>
+                        </div>
+                        <p className="text-sm text-yellow-700 mt-1">10% bonus points on orders</p>
+                      </div>
+                      <div className="p-3 border border-gray-200 bg-gray-50 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <p className="font-medium text-gray-600">Silver</p>
+                          <p className="text-sm text-gray-600">1000+ points</p>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-1">5% bonus points on orders</p>
+                      </div>
+                      <div className="p-3 border border-orange-200 bg-orange-50 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <p className="font-medium text-orange-800">Bronze</p>
+                          <p className="text-sm text-orange-800">0+ points</p>
+                        </div>
+                        <p className="text-sm text-orange-700 mt-1">Base points on orders</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Top Performers Section */}
+            <div className="border-t pt-8">
+              <h3 className="text-lg font-semibold mb-4">Top Performers</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Top Reward Earners Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Top Customers</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {rewardsData.topEarners.map((earner, index) => (
+                        <div key={index} className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                              {earner.name.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-medium">{earner.name}</p>
+                              <p className="text-xs text-gray-500">{earner.level} Member</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium">{earner.points} pts</p>
+                            <p className="text-xs text-gray-500">{earner.orders} orders</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Top Performing Couriers Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Top Performing Couriers</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {rewardsData.topCouriers.map((courier, index) => (
+                        <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <p className="font-medium">{courier.name}</p>
+                            <p className="text-sm text-gray-500">{courier.deliveries} deliveries</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium">{courier.points} pts</p>
+                            <p className="text-xs text-gray-500">GH₵{courier.totalEarned.toFixed(2)} earned</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Top Performing Restaurants Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Top Performing Restaurants</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {rewardsData.topRestaurants.map((restaurant, index) => (
+                        <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <p className="font-medium">{restaurant.name}</p>
+                            <p className="text-sm text-gray-500">{restaurant.orders} orders</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium">{restaurant.points} pts</p>
+                            <div className="text-xs text-gray-500">
+                              <p>GH₵{restaurant.totalRevenue.toFixed(2)} revenue</p>
+                              <p>Avg. GH₵{restaurant.averageOrderValue.toFixed(2)}/order</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Available Rewards Section */}
+            <div className="border-t pt-8">
+              <h3 className="text-lg font-semibold mb-4">Available Rewards</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Available Rewards</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {[
+                        { name: "GH₵50 Off", points: 500, validity: "30 days" },
+                        { name: "Free Delivery", points: 300, validity: "7 days" },
+                        { name: "GH₵100 Off", points: 1000, validity: "30 days" },
+                        { name: "Priority Delivery", points: 200, validity: "7 days" }
+                      ].map((reward, index) => (
+                        <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <p className="font-medium">{reward.name}</p>
+                            <p className="text-sm font-medium">{reward.points} pts</p>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">Valid for {reward.validity}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </div>
         </TabsContent>
       </Tabs>
