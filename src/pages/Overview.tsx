@@ -106,6 +106,7 @@ interface Food {
   price: number;
   description: string;
   quantity: number;
+  sold: number;
   foodImage?: {
     url: string;
   };
@@ -145,6 +146,12 @@ export default function Overview() {
   const [menuError, setMenuError] = useState<string | null>(null);
   const [selectedFoodType, setSelectedFoodType] = useState<string>('all');
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+  const [recentSalesPage, setRecentSalesPage] = useState(1);
+  const [customersPage, setCustomersPage] = useState(1);
+  const recentSalesPerPage = 10;
+  const customersPerPage = 10;
 
   // Calculate earnings data from orders with its own filter
   const earningsData = useMemo(() => {
@@ -862,7 +869,6 @@ export default function Overview() {
       try {
         setIsLoadingMenu(true);
         setMenuError(null);
-        const userId = localStorage.getItem('delikaOnboardingId');
 
         const response = await fetch(
           `${API_BASE_URL}${GET_ALL_MENU_ENDPOINT}`,
@@ -881,11 +887,21 @@ export default function Overview() {
         }
 
         const menuData = await response.json();
-        // Filter out menu items with empty foodType and empty foods array
-        const validMenuItems = menuData.filter((item: MenuType) => 
-          item.foodType && item.foodType.trim() !== '' && 
-          item.foods && item.foods.length > 0
-        );
+        
+        // Get restaurant names from the restaurants state
+        const restaurantMap = new Map(restaurants.map(r => [r.id, r.restaurantName]));
+        
+        // Filter and map menu items with restaurant names
+        const validMenuItems = menuData
+          .filter((item: MenuType) => 
+            item.foodType && item.foodType.trim() !== '' && 
+            item.foods && item.foods.length > 0
+          )
+          .map((item: MenuType) => ({
+            ...item,
+            restaurantName: restaurantMap.get(item.restaurantName) || 'Unknown Restaurant'
+          }));
+          
         setMenuItems(validMenuItems);
       } catch (error) {
         console.error('Error fetching menu items:', error);
@@ -895,8 +911,10 @@ export default function Overview() {
       }
     };
 
-    fetchAllMenuItems();
-  }, []);
+    if (restaurants.length > 0) {
+      fetchAllMenuItems();
+    }
+  }, [restaurants]);
 
   // Get unique food types and ensure they're not empty strings
   const foodTypes = useMemo(() => {
@@ -909,8 +927,8 @@ export default function Overview() {
     return ['all', ...Array.from(types)];
   }, [menuItems]);
 
-  // Filter menu items by type and search query
-  const filteredMenuItems = useMemo(() => {
+  // Update the filtered and paginated menu items
+  const filteredAndPaginatedMenuItems = useMemo(() => {
     let items = menuItems;
     
     if (selectedFoodType !== 'all') {
@@ -926,9 +944,49 @@ export default function Overview() {
         )
       })).filter(item => item.foods.length > 0);
     }
+
+    // Calculate total items and pages
+    const flattenedItems = items.flatMap(item => 
+      item.foods.map(food => ({ ...food, foodType: item.foodType, restaurantName: item.restaurantName }))
+    );
     
-    return items;
-  }, [menuItems, selectedFoodType, menuSearchQuery]);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    
+    return {
+      items: flattenedItems.slice(startIndex, endIndex),
+      totalItems: flattenedItems.length,
+      totalPages: Math.ceil(flattenedItems.length / itemsPerPage)
+    };
+  }, [menuItems, selectedFoodType, menuSearchQuery, currentPage]);
+
+  // Update the recentSalesByRestaurant calculation
+  const paginatedRecentSales = useMemo(() => {
+    const allSales = Object.values(recentSalesByRestaurant).flat().sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    
+    const startIndex = (recentSalesPage - 1) * recentSalesPerPage;
+    const endIndex = startIndex + recentSalesPerPage;
+    
+    return {
+      items: allSales.slice(startIndex, endIndex),
+      totalItems: allSales.length,
+      totalPages: Math.ceil(allSales.length / recentSalesPerPage)
+    };
+  }, [recentSalesByRestaurant, recentSalesPage]);
+
+  // Update the customers pagination
+  const paginatedCustomers = useMemo(() => {
+    const startIndex = (customersPage - 1) * customersPerPage;
+    const endIndex = startIndex + customersPerPage;
+    
+    return {
+      items: filteredCustomers.slice(startIndex, endIndex),
+      totalItems: filteredCustomers.length,
+      totalPages: Math.ceil(filteredCustomers.length / customersPerPage)
+    };
+  }, [filteredCustomers, customersPage]);
 
   return (
     <div className="container mx-auto p-6 mt-32">
@@ -1334,9 +1392,7 @@ export default function Overview() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {Object.values(recentSalesByRestaurant).flat().sort((a, b) => 
-                      new Date(b.date).getTime() - new Date(a.date).getTime()
-                    ).map((sale, index) => (
+                    {paginatedRecentSales.items.map((sale, index) => (
                       <tr key={index} className="hover:bg-gray-50">
                         <td className="px-4 py-3">
                           <p className="font-medium">{sale.customer}</p>
@@ -1371,9 +1427,33 @@ export default function Overview() {
                     ))}
                   </tbody>
                 </table>
-                {Object.keys(recentSalesByRestaurant).length === 0 && (
+                {Object.keys(recentSalesByRestaurant).length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     No sales data available
+                  </div>
+                ) : (
+                  <div className="flex justify-between items-center p-4 border-t">
+                    <p className="text-sm text-gray-500">
+                      Showing {((recentSalesPage - 1) * recentSalesPerPage) + 1} to {Math.min(recentSalesPage * recentSalesPerPage, paginatedRecentSales.totalItems)} of {paginatedRecentSales.totalItems} sales
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setRecentSalesPage(prev => Math.max(1, prev - 1))}
+                        disabled={recentSalesPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setRecentSalesPage(prev => Math.min(paginatedRecentSales.totalPages, prev + 1))}
+                        disabled={recentSalesPage === paginatedRecentSales.totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -1475,7 +1555,7 @@ export default function Overview() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredCustomers.map((customer) => (
+                        {paginatedCustomers.items.map((customer) => (
                           <tr key={customer.id} className="bg-white border-b hover:bg-gray-50">
                             <td className="px-6 py-4 font-medium">
                               <div className="flex items-center space-x-3">
@@ -1556,15 +1636,15 @@ export default function Overview() {
               <div className="text-center py-8">
                 <p className="text-red-500">{menuError}</p>
               </div>
-            ) : filteredMenuItems.length === 0 ? (
+            ) : filteredAndPaginatedMenuItems.items.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-500">No menu items found</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {filteredMenuItems.map((menuType) => (
-                  menuType.foods.map((food) => (
-                    <Card key={food.name} className="overflow-hidden hover:shadow-lg transition-shadow bg-white">
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                  {filteredAndPaginatedMenuItems.items.map((food) => (
+                    <Card key={`${food.name}-${food.restaurantName}`} className="border overflow-hidden hover:shadow-lg transition-shadow bg-white">
                       {food.foodImage && (
                         <div className="h-48 overflow-hidden">
                           <img 
@@ -1578,11 +1658,11 @@ export default function Overview() {
                         <div className="flex justify-between items-start mb-2">
                           <div>
                             <h4 className="font-semibold truncate max-w-[150px]" title={food.name}>{food.name}</h4>
-                            <p className="text-sm text-gray-500 truncate max-w-[150px]" title={menuType.restaurantName}>
-                              {menuType.restaurantName || 'Unknown Restaurant'}
+                            <p className="text-sm text-gray-500 truncate max-w-[150px]" title={food.restaurantName}>
+                              {food.restaurantName || 'Unknown Restaurant'}
                             </p>
                           </div>
-                          <Badge variant="outline" className="ml-2 shrink-0">{menuType.foodType}</Badge>
+                          <Badge variant="outline" className="ml-2 shrink-0">{food.foodType}</Badge>
                         </div>
                         <p className="text-sm text-gray-600 mt-1 line-clamp-2" title={food.description}>
                           {food.description}
@@ -1591,15 +1671,41 @@ export default function Overview() {
                           <p className="text-sm font-medium text-green-600">
                             GH₵{Number(food.price).toFixed(2)}
                           </p>
-                          <p className="text-sm text-gray-500">
-                            Qty: {food.quantity || 0}
-                          </p>
+                          <div className="text-sm text-gray-500">
+                            <p>Stock: {food.quantity || 0}</p>
+                            <p>Sold: {food.sold || 0}</p>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
-                  ))
-                ))}
-              </div>
+                  ))}
+                </div>
+                
+                {/* Pagination */}
+                <div className="flex justify-between items-center mt-6">
+                  <p className="text-sm text-gray-500">
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndPaginatedMenuItems.totalItems)} of {filteredAndPaginatedMenuItems.totalItems} items
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(filteredAndPaginatedMenuItems.totalPages, prev + 1))}
+                      disabled={currentPage === filteredAndPaginatedMenuItems.totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </TabsContent>
@@ -1665,12 +1771,6 @@ export default function Overview() {
                         <div className="text-right space-y-1">
                           <p>Delivered to: {order.dropoffName}</p>
                           <p>{new Date(order.orderDate).toLocaleString()}</p>
-                          <span className={`px-2 py-1 rounded-full text-xs
-                            ${order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-800' :
-                              order.orderStatus === 'Cancelled' ? 'bg-red-100 text-red-800' :
-                              'bg-blue-100 text-blue-800'}`}>
-                            {order.orderStatus}
-                          </span>
                         </div>
                       </div>
                     </div>
