@@ -99,6 +99,15 @@ export default function Overview() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
+  const [selectedRestaurantMonth, setSelectedRestaurantMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [selectedOverviewMonth, setSelectedOverviewMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [selectedRecentSalesRestaurant, setSelectedRecentSalesRestaurant] = useState<string>('all');
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -115,10 +124,10 @@ export default function Overview() {
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [isLoadingRestaurants, setIsLoadingRestaurants] = useState(false);
 
-  // Calculate earnings data from orders
+  // Calculate earnings data from orders with its own filter
   const earningsData = useMemo(() => {
     // Filter orders by selected month
-    const [year, month] = selectedMonth.split('-');
+    const [year, month] = selectedOverviewMonth.split('-');
     const filteredOrders = orders.filter(order => {
       const orderDate = new Date(order.orderDate);
       return orderDate.getFullYear() === parseInt(year) && 
@@ -146,7 +155,7 @@ export default function Overview() {
 
     // Sort by day
     return dailyData.sort((a, b) => a.day - b.day);
-  }, [orders, selectedMonth]);
+  }, [orders, selectedOverviewMonth]);
 
   // Mock active couriers data
   const activeCouriers = [
@@ -414,12 +423,12 @@ export default function Overview() {
     );
   };
 
-  // Calculate restaurant metrics
+  // Calculate restaurant metrics with its own filter
   const restaurantMetrics = useMemo(() => {
     const totalRestaurants = restaurants.length;
     
     // Filter orders by selected month
-    const [year, month] = selectedMonth.split('-');
+    const [year, month] = selectedRestaurantMonth.split('-');
     const filteredOrders = orders.filter(order => {
       const orderDate = new Date(order.orderDate);
       return orderDate.getFullYear() === parseInt(year) && 
@@ -470,33 +479,40 @@ export default function Overview() {
         ? (filteredOrders.length / totalRestaurants).toFixed(1) 
         : 0
     };
-  }, [restaurants, orders, selectedMonth]);
+  }, [restaurants, orders, selectedRestaurantMonth]);
 
-  // Group orders by restaurant for Recent Sales
+  // Group orders by restaurant for Recent Sales with restaurant filter
   const recentSalesByRestaurant = useMemo(() => {
     // Filter orders by selected month
     const [year, month] = selectedMonth.split('-');
     const filteredOrders = orders.filter(order => {
       const orderDate = new Date(order.orderDate);
-      return orderDate.getFullYear() === parseInt(year) && 
-             orderDate.getMonth() === parseInt(month) - 1;
+      const monthMatch = orderDate.getFullYear() === parseInt(year) && 
+                        orderDate.getMonth() === parseInt(month) - 1;
+      
+      // Additional filter for selected restaurant
+      const restaurantMatch = selectedRecentSalesRestaurant === 'all' || 
+                            order.restaurantId === selectedRecentSalesRestaurant;
+      
+      return monthMatch && restaurantMatch;
     });
     
     // Group by restaurant
     return filteredOrders.reduce((acc: { [key: string]: any[] }, order) => {
-      const restaurantName = order.restaurantName || 'Unknown Restaurant';
+      const restaurantName = order.restaurantName;
       if (!acc[restaurantName]) {
         acc[restaurantName] = [];
       }
       acc[restaurantName].push({
         customer: order.customerName,
-        amount: order.totalPrice,
+        amount: Number(order.totalPrice) || 0,
         date: new Date(order.orderDate),
-        status: order.orderStatus
+        status: order.orderStatus,
+        items: order.products.map(p => `${p.quantity}x ${p.name}`).join(', ')
       });
       return acc;
     }, {});
-  }, [orders, selectedMonth]);
+  }, [orders, selectedMonth, selectedRecentSalesRestaurant]);
 
   // Add styles for the map
   const mapStyle = `
@@ -1123,7 +1139,7 @@ export default function Overview() {
           <div className="mb-16">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Overview</h2>
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <Select value={selectedOverviewMonth} onValueChange={setSelectedOverviewMonth}>
                 <SelectTrigger className="w-[180px] bg-gray-50 border-gray-200 hover:bg-gray-100">
                   <SelectValue />
                 </SelectTrigger>
@@ -1192,76 +1208,81 @@ export default function Overview() {
           <div className="mb-16">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Recent Sales</h2>
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <Select value={selectedRecentSalesRestaurant} onValueChange={setSelectedRecentSalesRestaurant}>
                 <SelectTrigger className="w-[180px] bg-gray-50 border-gray-200 hover:bg-gray-100">
-                  <SelectValue />
+                  <SelectValue placeholder="Select restaurant" />
                 </SelectTrigger>
                 <SelectContent className="bg-white/95 backdrop-blur-sm">
-                  {Array.from({ length: 12 }, (_, i) => {
-                    const date = new Date();
-                    date.setMonth(date.getMonth() - i);
-                    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                    const label = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-                    return (
-                      <SelectItem key={value} value={value}>{label}</SelectItem>
-                    );
-                  })}
+                  <SelectItem value="all">All Restaurants</SelectItem>
+                  {restaurants.map((restaurant) => (
+                    <SelectItem key={restaurant.id} value={restaurant.id}>
+                      {restaurant.restaurantName}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-              {restaurants.map((restaurant) => {
-                const sales = recentSalesByRestaurant[restaurant.restaurantName] || [];
-                return (
-                  <Card key={restaurant.id} className="bg-white overflow-hidden">
-                    <CardHeader className="border-b bg-gray-50/50">
-                      <div className="flex justify-between items-center">
-                        <CardTitle className="text-lg truncate" title={restaurant.restaurantName}>
-                          {restaurant.restaurantName}
-                        </CardTitle>
-                        <span className="text-sm text-gray-500">{sales.length} orders</span>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      {sales.slice(0, 5).map((sale, index) => (
-                        <div key={index} 
-                             className={`p-4 flex justify-between items-center hover:bg-gray-50 transition-colors
-                                      ${index !== sales.length - 1 ? 'border-b border-gray-100' : ''}`}>
-                          <div>
-                            <p className="font-medium truncate max-w-[150px]" title={sale.customer}>
-                              {sale.customer}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {new Date(sale.date).toLocaleString('default', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                hour12: true
-                              })}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium">GH₵{sale.amount.toFixed(2)}</p>
-                            <span className={`inline-block px-2 py-1 text-xs rounded-full ${
-                              sale.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                              sale.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                              sale.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
-                              'bg-blue-100 text-blue-800'
-                            }`}>
-                              {sale.status}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                      {sales.length === 0 && (
-                        <div className="p-4 text-center text-gray-500">
-                          No sales this month
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+            <Card>
+              <CardHeader className="border-b">
+                <CardTitle>Sales History</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Customer</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Items</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Amount</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Date</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {Object.values(recentSalesByRestaurant).flat().sort((a, b) => 
+                      new Date(b.date).getTime() - new Date(a.date).getTime()
+                    ).map((sale, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <p className="font-medium">{sale.customer}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm text-gray-600">{sale.items}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium">GH₵{Number(sale.amount).toFixed(2)}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm text-gray-600">
+                            {new Date(sale.date).toLocaleString('default', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                            sale.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                            sale.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                            sale.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {sale.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {Object.keys(recentSalesByRestaurant).length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    No sales data available
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* New Sections Suggestions */}
