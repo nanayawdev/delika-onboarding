@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { DollarSign, TrendingUp, Users, Route, MapPin, Phone, User, Building2, ChartBar } from "lucide-react";
+import { DollarSign, TrendingUp, Users, Route, MapPin, Phone, User, Building2, ChartBar, BadgeCent } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { API_BASE_URL, GET_ORDERS_ENDPOINT, GET_RESTAURANTS_ENDPOINT, GET_ALL_MENU_ENDPOINT, GET_BRANCHES_ENDPOINT } from "@/lib/constants";
 import maplibregl from 'maplibre-gl';
@@ -1219,7 +1219,7 @@ export default function Overview() {
                   ) : (
                     <p className="text-2xl font-bold">GH₵{monthlyMetrics.revenue.toFixed(2)}</p>
                   )}
-                  <DollarSign className="h-6 w-6 text-white/80" />
+                  <BadgeCent className="h-6 w-6 text-white/80" />
                 </div>
                 <p className="text-sm text-white/80">Monthly delivery revenue</p>
               </CardContent>
