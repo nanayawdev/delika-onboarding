@@ -12,8 +12,21 @@ export function Navbar() {
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false)
 
   useEffect(() => {
-    const authToken = localStorage.getItem('authToken')
-    setIsLoggedIn(!!authToken)
+    const checkAuthStatus = () => {
+      const authToken = localStorage.getItem('authToken')
+      setIsLoggedIn(!!authToken)
+    }
+
+    // Check initial auth status
+    checkAuthStatus()
+
+    // Listen for auth state changes
+    window.addEventListener('authStateChange', checkAuthStatus)
+
+    // Cleanup listener
+    return () => {
+      window.removeEventListener('authStateChange', checkAuthStatus)
+    }
   }, [])
 
   const handleProtectedNavigation = (path: string, itemName: string) => {

@@ -116,9 +116,12 @@ export default function SignIn() {
 
   const handleOTPSuccess = () => {
     if (tempAuthData) {
-      // Store auth data and navigate
+      // Store auth data
       localStorage.setItem('authToken', tempAuthData.authToken)
       localStorage.setItem('delikaOnboardingId', tempAuthData.delika_onboarding_id)
+      
+      // Dispatch a custom event to notify navbar of auth state change
+      window.dispatchEvent(new Event('authStateChange'))
       
       // Use requestAnimationFrame to handle state updates
       requestAnimationFrame(() => {
