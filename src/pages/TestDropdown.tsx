@@ -8,18 +8,20 @@ const TestDropdown = () => {
   return (
     <div>
       <h2>Select an Option</h2>
-      <Select onValueChange={setSelected} className="w-32 bg-white rounded-md shadow-md border border-gray-300">
-        <SelectTrigger>
-          <SelectValue placeholder="Select" />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option} value={option}>
-              {option}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="w-32">
+        <Select onValueChange={setSelected}>
+          <SelectTrigger className="bg-white rounded-md shadow-md border border-gray-300">
+            <SelectValue placeholder="Select" />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((option) => (
+              <SelectItem key={option} value={option}>
+                {option}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       {selected && <p>You selected: {selected}</p>}
     </div>
   );

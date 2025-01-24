@@ -11,10 +11,6 @@ import { ResetPasswordModal } from '@/components/signin/reset-password-modal'
 import { toast } from "sonner"
 import { Sonner } from "@/components/ui/sonner"
 
-interface ResetPasswordDetails {
-  email: string
-}
-
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const SEND_OTP_ENDPOINT = import.meta.env.VITE_SEND_OTP_ENDPOINT;
 
@@ -135,7 +131,7 @@ export default function ResetPassword() {
         email={email}
       />
       
-      <Sonner position="top-right" />
+      <Sonner />
     </div>
   )
 } 
