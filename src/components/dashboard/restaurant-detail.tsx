@@ -86,6 +86,7 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel"
+import { TableHeader } from '../ui/table';
 
 interface Restaurant {
   id: string
@@ -955,7 +956,7 @@ export default function RestaurantDetail() {
                     ) : (
                       <div className="overflow-auto max-h-[400px]">
                         <Table>
-                          <TableHeader>
+                          <TableHead>
                             <TableRow>
                               <TableHead>Full Name</TableHead>
                               <TableHead>Email</TableHead>
@@ -963,7 +964,7 @@ export default function RestaurantDetail() {
                               <TableHead>Branch</TableHead>
                               <TableHead className="w-[50px] text-black dark:text-white"></TableHead>
                             </TableRow>
-                          </TableHeader>
+                          </TableHead>
                           <TableBody>
                             {users.map((user) => (
                               <TableRow key={user.id}>
