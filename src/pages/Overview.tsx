@@ -113,8 +113,8 @@ interface RestaurantStats {
 
 export default function Overview() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
-  const [orderError, setOrderError] = useState<string | null>(null);
+  const [setIsLoadingOrders] = useState(false);
+  const [setOrderError] = useState<string | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
