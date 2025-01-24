@@ -141,7 +141,6 @@ export default function Overview() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
   const [recentSalesPage, setRecentSalesPage] = useState(1);
-  const [customersPage, setCustomersPage] = useState(1);
   const recentSalesPerPage = 10;
   const customersPerPage = 10;
   const [selectedRewardsMonth, setSelectedRewardsMonth] = useState(() => {
@@ -222,102 +221,6 @@ export default function Overview() {
     };
   }, [orders, selectedMonth]);
 
-  const activeCouriers = [
-    { 
-      id: 1, 
-      name: "John Doe", 
-      status: "Delivering", 
-      orders: 5, 
-      location: "East Legon",
-      phone: "+233 50 123 4567",
-      image: "https://ui.shadcn.com/avatars/01.png"
-    },
-    { 
-      id: 2, 
-      name: "Jane Smith", 
-      status: "Available", 
-      orders: 0, 
-      location: "Accra Mall",
-      phone: "+233 50 123 4568",
-      image: "https://ui.shadcn.com/avatars/02.png"
-    },
-    { 
-      id: 3, 
-      name: "Mike Johnson", 
-      status: "Break", 
-      orders: 3, 
-      location: "Tema",
-      phone: "+233 50 123 4569",
-      image: "https://ui.shadcn.com/avatars/03.png"
-    },
-    { 
-      id: 4, 
-      name: "Sarah Wilson", 
-      status: "Delivering", 
-      orders: 2, 
-      location: "Spintex",
-      phone: "+233 50 123 4570",
-      image: "https://ui.shadcn.com/avatars/04.png"
-    },
-    { 
-      id: 5, 
-      name: "Tom Brown", 
-      status: "Available", 
-      orders: 0, 
-      location: "Madina",
-      phone: "+233 50 123 4571",
-      image: "https://ui.shadcn.com/avatars/05.png"
-    },
-  ];
-
-  const recentSales = {
-    "Restaurant A": [
-      { customer: "Olivia Martin", amount: 1999.00 },
-      { customer: "Jackson Lee", amount: 39.00 },
-    ],
-    "Restaurant B": [
-      { customer: "Isabella Nguyen", amount: 299.00 },
-      { customer: "William Kim", amount: 99.00 },
-    ],
-    "Restaurant C": [
-      { customer: "Sofia Davis", amount: 39.00 },
-    ]
-  };
-
-  const getOrderProgress = (orders: any[]) => {
-    const statuses = {
-      Assigned: false,
-      Pickup: false,
-      OnTheWay: false,
-      Delivered: false
-    };
-
-    const latestOrder = orders[orders.length - 1];
-    if (latestOrder) {
-      switch (latestOrder.orderStatus) {
-        case 'Delivered':
-          statuses.Delivered = true;
-          statuses.OnTheWay = true;
-          statuses.Pickup = true;
-          statuses.Assigned = true;
-          break;
-        case 'OnTheWay':
-          statuses.OnTheWay = true;
-          statuses.Pickup = true;
-          statuses.Assigned = true;
-          break;
-        case 'Pickup':
-          statuses.Pickup = true;
-          statuses.Assigned = true;
-          break;
-        case 'Assigned':
-          statuses.Assigned = true;
-          break;
-      }
-    }
-    return statuses;
-  };
-
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -353,13 +256,6 @@ export default function Overview() {
     fetchOrders();
   }, []);
 
-  const totalDeliveryRevenue = useMemo(() => {
-    return orders.reduce((acc, order) => {
-      const deliveryPrice = parseFloat(order.deliveryPrice?.toString() || '0');
-      return acc + (isNaN(deliveryPrice) ? 0 : deliveryPrice);
-    }, 0);
-  }, [orders]);
-
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
@@ -391,28 +287,6 @@ export default function Overview() {
 
     fetchRestaurants();
   }, []);
-
-  const handleCourierClick = async (courier: Courier) => {
-    setSelectedCourier(courier);
-    const origin = { lat: courier.orders[0].pickupLocation.lat, lng: courier.orders[0].pickupLocation.lng };
-    const destination = { lat: courier.orders[0].dropoffLocation.lat, lng: courier.orders[0].dropoffLocation.lng };
-
-    const directionsService = new window.google.maps.DirectionsService();
-    directionsService.route(
-      {
-        origin,
-        destination,
-        travelMode: window.google.maps.TravelMode.DRIVING,
-      },
-      (result, status) => {
-        if (status === window.google.maps.DirectionsStatus.OK) {
-          setDirections(result);
-        } else {
-          console.error(`Error fetching directions: ${result}`);
-        }
-      }
-    );
-  };
 
   const restaurantMetrics = useMemo(() => {
     const totalRestaurants = restaurants.length;
