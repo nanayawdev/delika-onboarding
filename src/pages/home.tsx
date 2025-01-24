@@ -1,6 +1,6 @@
 import { Navbar } from "@/components/layout/navbar"
 import heroImage from '@/assets/hero-image.jpg'
-import { motion, usePresence, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { useState, useEffect } from "react"
 
 export default function Home() {
