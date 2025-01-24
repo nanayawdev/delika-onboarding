@@ -161,6 +161,7 @@ interface OrderProgress {
   Pickup: boolean;
   OnTheWay: boolean;
   Delivered: boolean;
+  [key: string]: boolean; // Add index signature
 }
 
 const capitalizeFirstLetter = (string: string): string => {
@@ -655,11 +656,11 @@ export default function RestaurantDetail() {
   }, []);
 
   const getCouriersList = useMemo((): Courier[] => {
-    const couriers = paginatedOrders.orders.reduce((acc, order) => {
+    const couriers: Record<string, Courier> = paginatedOrders.orders.reduce((acc: Record<string, Courier>, order: Order) => {
       if (order.courierName) {
         if (!acc[order.courierName]) {
           // Find the courier in allUsers
-          const courierUser = allUsers.find(user => 
+          const courierUser = allUsers.find((user: any) => 
             user === order.courierName || 
             user === order.courierPhoneNumber
           );
@@ -715,68 +716,14 @@ export default function RestaurantDetail() {
     return statuses;
   };
 
-  const CourierDetailsModal = ({ isOpen, onClose, courier }) => {
-    if (!courier) return null;
-
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>{courier.name}'s Deliveries</DialogTitle>
-          </DialogHeader>
-          <div className="mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order #</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Delivery Price</TableHead>
-                  <TableHead>Pickup Location</TableHead>
-                  <TableHead>Dropoff Location</TableHead>
-                  <TableHead>Received</TableHead>
-                  <TableHead>Picked Up</TableHead>
-                  <TableHead>On The Way</TableHead>
-                  <TableHead>Completed</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {courier.orders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell>{order.orderNumber}</TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-700' :
-                        order.orderStatus === 'ReadyForPickup' ? 'bg-blue-100 text-blue-700' :
-                        order.orderStatus === 'Cancelled' ? 'bg-red-100 text-red-700' :
-                        order.orderStatus === 'Assigned' ? 'bg-yellow-100 text-yellow-700' :
-                        order.orderStatus === 'Pickup' ? 'bg-orange-100 text-orange-700' :
-                        order.orderStatus === 'OnTheWay' ? 'bg-purple-100 text-purple-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {order.orderStatus}
-                      </span>
-                    </TableCell>
-                    <TableCell>GH₵{Number(order.deliveryPrice).toFixed(2)}</TableCell>
-                    <TableCell>{order.pickupName}</TableCell>
-                    <TableCell>{order.dropoffName}</TableCell>
-                    <TableCell>{order.orderReceivedTime ? new Date(order.orderReceivedTime).toLocaleTimeString() : '-'}</TableCell>
-                    <TableCell>{order.orderPickedUpTime ? new Date(order.orderPickedUpTime).toLocaleTimeString() : '-'}</TableCell>
-                    <TableCell>{order.orderOnmywayTime ? new Date(order.orderOnmywayTime).toLocaleTimeString() : '-'}</TableCell>
-                    <TableCell>{order.orderCompletedTime ? new Date(order.orderCompletedTime).toLocaleTimeString() : '-'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  };
-
   // Add pagination handler
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-  }
+  const handlePageChange = undefined;
+  const currentSlideItems = useMemo(() => {
+    const startIndex = currentSlide * itemsPerSlide;
+    return menuItems.slice(startIndex, startIndex + itemsPerSlide);
+  }, [menuItems, currentSlide, itemsPerSlide]);
+  const nextSlide = undefined;
+  const previousSlide = undefined;
 
   useEffect(() => {
     const fetchMenuItems = async () => {
@@ -831,20 +778,6 @@ export default function RestaurantDetail() {
 
   // Calculate total slides needed
   const totalSlides = Math.ceil(filteredMenuItems.length / itemsPerSlide);
-
-  // Get current slide items
-  const currentSlideItems = filteredMenuItems.slice(
-    currentSlide * itemsPerSlide,
-    (currentSlide + 1) * itemsPerSlide
-  );
-
-  const nextSlide = () => {
-    setCurrentSlide(current => (current + 1) % totalSlides);
-  };
-
-  const previousSlide = () => {
-    setCurrentSlide(current => (current - 1 + totalSlides) % totalSlides);
-  };
 
   if (!restaurant) {
     return (
@@ -1234,7 +1167,7 @@ export default function RestaurantDetail() {
                               className="w-full"
                             >
                               <CarouselContent className="-ml-2 md:-ml-4">
-                                {filteredMenuItems.map((food, index) => (
+                                {currentSlideItems.map((food, index) => (
                                   <CarouselItem key={index} className="pl-2 md:pl-4 basis-1/5">
                                     <Card className="overflow-hidden bg-white hover:shadow-lg transition-shadow">
                                       {food.foodImage && (
