@@ -141,6 +141,7 @@ export default function Overview() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
   const [recentSalesPage, setRecentSalesPage] = useState(1);
+  const [customersPage, setCustomersPage] = useState(1);
   const recentSalesPerPage = 10;
   const customersPerPage = 10;
   const [selectedRewardsMonth, setSelectedRewardsMonth] = useState(() => {
@@ -220,73 +221,6 @@ export default function Overview() {
       totalDistance
     };
   }, [orders, selectedMonth]);
-
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        setIsLoadingOrders(true);
-        const userId = localStorage.getItem('delikaOnboardingId');
-        const response = await fetch(
-          `${API_BASE_URL}${GET_ORDERS_ENDPOINT}?filter[delika_onboarding_id][eq]=${userId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            },
-            method: 'GET'
-          }
-        );
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch orders');
-        }
-        
-        const data = await response.json();
-        console.log('Orders data for revenue:', data);
-        setOrders(data);
-      } catch (error) {
-        console.error('Error fetching orders:', error);
-        setOrderError('Failed to load orders');
-      } finally {
-        setIsLoadingOrders(false);
-      }
-    };
-
-    fetchOrders();
-  }, []);
-
-  useEffect(() => {
-    const fetchRestaurants = async () => {
-      try {
-        setIsLoadingOrders(true);
-        const userId = localStorage.getItem('delikaOnboardingId');
-        const response = await fetch(
-          `${API_BASE_URL}${GET_RESTAURANTS_ENDPOINT}?filter[delika_onboarding_id][eq]=${userId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch restaurants');
-        }
-
-        const data = await response.json();
-        setRestaurants(data);
-      } catch (error) {
-        console.error('Error fetching restaurants:', error);
-      } finally {
-        setIsLoadingOrders(false);
-      }
-    };
-
-    fetchRestaurants();
-  }, []);
 
   const restaurantMetrics = useMemo(() => {
     const totalRestaurants = restaurants.length;
@@ -368,6 +302,73 @@ export default function Overview() {
       return acc;
     }, {});
   }, [orders, selectedMonth, selectedRecentSalesRestaurant]);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setIsLoadingOrders(true);
+        const userId = localStorage.getItem('delikaOnboardingId');
+        const response = await fetch(
+          `${API_BASE_URL}${GET_ORDERS_ENDPOINT}?filter[delika_onboarding_id][eq]=${userId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            method: 'GET'
+          }
+        );
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch orders');
+        }
+        
+        const data = await response.json();
+        console.log('Orders data for revenue:', data);
+        setOrders(data);
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        setOrderError('Failed to load orders');
+      } finally {
+        setIsLoadingOrders(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+
+  useEffect(() => {
+    const fetchRestaurants = async () => {
+      try {
+        setIsLoadingOrders(true);
+        const userId = localStorage.getItem('delikaOnboardingId');
+        const response = await fetch(
+          `${API_BASE_URL}${GET_RESTAURANTS_ENDPOINT}?filter[delika_onboarding_id][eq]=${userId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch restaurants');
+        }
+
+        const data = await response.json();
+        setRestaurants(data);
+      } catch (error) {
+        console.error('Error fetching restaurants:', error);
+      } finally {
+        setIsLoadingOrders(false);
+      }
+    };
+
+    fetchRestaurants();
+  }, []);
 
   useEffect(() => {
     if (!mapRef.current || !orders.length) return;
