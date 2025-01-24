@@ -1,5 +1,3 @@
-
-
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from "@/components/ui/button"
@@ -67,7 +65,7 @@ export default function SignIn() {
     if (validateForm()) {
       setIsLoading(true)
       try {
-        const signInUrl = `${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SIGN_IN_ENDPOINT}`;
+        const signInUrl = 'https://api-server.krontiva.africa/api:uEBBwbSs/delika/onboarding/login';
         console.log('Attempting to sign in with URL:', signInUrl);
         
         const response = await fetch(signInUrl, {
