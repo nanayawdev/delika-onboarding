@@ -1043,19 +1043,8 @@ export default function RestaurantDetail() {
                     </div>
                   ) : error ? (
                     <ErrorState 
-                      icon={Building2}
-                      title="Failed to Load Branches"
-                      description="Sorry, there are no branches for this restaurant."
-                      primaryAction={{
-                        label: "Reload",
-                        onClick: () => refreshBranches(restaurant.id),
-                        icon: RefreshCcw
-                      }}
-                      secondaryAction={{
-                        label: "Go Back",
-                        onClick: () => navigate(-1),
-                        icon: ArrowLeft
-                      }}
+                      icon={<Building2 className="h-6 w-6" />}
+                      message="Sorry, there are no branches for this restaurant."
                     />
                   ) : branches.length === 0 ? (
                     <div className="text-center py-12">
