@@ -157,6 +157,20 @@ interface MenuType {
   foods: Food[];
 }
 
+interface Courier {
+  name: string;
+  image?: { url: string };
+  phoneNumber: string;
+  orders: Order[];
+}
+
+interface OrderProgress {
+  Assigned: boolean;
+  Pickup: boolean;
+  OnTheWay: boolean;
+  Delivered: boolean;
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const GET_RESTAURANTS_ENDPOINT = import.meta.env.VITE_GET_RESTAURANTS_ENDPOINT;
 const GET_BRANCHES_ENDPOINT = import.meta.env.VITE_GET_BRANCHES_ENDPOINT;
@@ -201,7 +215,7 @@ export default function RestaurantDetail() {
   const [orders, setOrders] = useState<Order[]>([]) // Define orders with a proper type
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('All')
-  const [selectedCourier, setSelectedCourier] = useState(null);
+  const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
   const [isCourierModalOpen, setIsCourierModalOpen] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1)
@@ -669,8 +683,8 @@ export default function RestaurantDetail() {
   }, [paginatedOrders.orders, allUsers]);
 
   // Add this helper function to get the latest order status
-  const getOrderProgress = (orders) => {
-    const statuses = {
+  const getOrderProgress = (orders: Order[]): OrderProgress => {
+    const statuses: OrderProgress = {
       Assigned: false,
       Pickup: false,
       OnTheWay: false,
@@ -1466,7 +1480,7 @@ export default function RestaurantDetail() {
                                 <div className="mt-6">
                                   <h2 className="text-lg font-semibold mb-4">Couriers</h2>
                                   <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                    {getCouriersList.map((courier) => (
+                                    {getCouriersList.map((courier: Courier) => (
                                       <Card 
                                         key={courier.name}
                                         className="cursor-pointer hover:shadow-lg transition-shadow bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
@@ -1497,7 +1511,7 @@ export default function RestaurantDetail() {
                                           <div className="flex justify-between items-center mt-1">
                                             <p className="text-sm text-gray-500">{courier.orders.length} orders</p>
                                             <p className="text-sm font-medium text-green-600">
-                                              GH₵{courier.orders.reduce((total, order) => total + (Number(order.deliveryPrice) || 0), 0).toFixed(2)}
+                                              GH₵{courier.orders.reduce((total: number, order: Order) => total + (Number(order.deliveryPrice) || 0), 0).toFixed(2)}
                                             </p>
                                           </div>
                                           
@@ -1505,11 +1519,11 @@ export default function RestaurantDetail() {
                                           <div className="mt-4 relative">
                                             {/* Progress Lines */}
                                             <div className="flex gap-1 h-1 w-full">
-                                              {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete], index, array) => (
+                                              {Object.entries(getOrderProgress(courier.orders)).map(([status]) => (
                                                 <div 
                                                   key={status}
                                                   className={`flex-1 rounded-full ${
-                                                    isComplete 
+                                                    getOrderProgress(courier.orders)[status] 
                                                       ? status === 'Assigned' ? 'bg-blue-500'
                                                         : status === 'Pickup' ? 'bg-yellow-500'
                                                         : status === 'OnTheWay' ? 'bg-purple-500'
@@ -1522,7 +1536,7 @@ export default function RestaurantDetail() {
                                             
                                             {/* Status Labels */}
                                             <div className="flex justify-between mt-2">
-                                              {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete]) => (
+                                              {Object.entries(getOrderProgress(courier.orders)).map(([status]) => (
                                                 <span key={status} className="text-xs text-gray-500">
                                                   {status === 'Assigned' ? 'Assigned' :
                                                    status === 'Pickup' ? 'Picked Up' :
@@ -1654,7 +1668,7 @@ export default function RestaurantDetail() {
                   setAllRestaurants(freshData)
                   
                   // Update the current restaurant with fresh data
-                  const updatedRestaurant = freshData.find(r => r.id === restaurant?.id)
+                  const updatedRestaurant = freshData.find((r: Restaurant) => r.id === restaurant?.id)
                   if (updatedRestaurant) {
                     setRestaurant(updatedRestaurant)
                   }
@@ -1743,7 +1757,7 @@ export default function RestaurantDetail() {
               description={`Are you sure you want to delete "${branchToDelete?.branchName}"?`}
             />
 
-            <Sonner position="top-right" />
+            <Sonner />
 
             {/* Footer with Logo */}
             <footer className="bg-gray-100 dark:bg-gray-900 text-black dark:text-white text-center py-4 flex items-center justify-center">
