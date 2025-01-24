@@ -2,11 +2,8 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { API_BASE_URL, GET_ORDERS_ENDPOINT, GET_RESTAURANTS_ENDPOINT, GET_ALL_MENU_ENDPOINT } from "@/lib/constants";
-import { Order, Customer, CustomerOrder, MenuType, CourierStats } from "@/types";
-import { toast } from "sonner";
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { mapStyle } from "@/styles/map-style";
 import {
   Card,
   CardContent,
@@ -15,19 +12,30 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { DollarSign, TrendingUp, Users, Route, Building2, ChartBar, BadgeCent } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge";
+import { Pagination } from "@/components/ui/pagination";
+import { toast } from "sonner";
+import { DollarSign, TrendingUp, Users, Route, Building2, ChartBar, BadgeCent, Search } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
-import Papa from 'papaparse';
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Pagination } from "@/components/ui/pagination";
-import { Badge } from "@/components/ui/badge";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import Papa from 'papaparse';
 
 const GEOAPIFY_API_KEY = import.meta.env.VITE_GEOAPIFY_API_KEY;
+
+const mapStyle = `
+  .delivery-marker {
+    width: 12px;
+    height: 12px;
+    background-color: #ef4444;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+  }
+`;
 
 interface Order {
   courierName: string;
@@ -94,16 +102,6 @@ interface MenuType {
   restaurantId: string;
   foodType: string;
   isAvailable: boolean;
-  foods?: Array<{
-    name: string;
-    price: number;
-    description: string;
-    quantity: number;
-    sold: number;
-    foodImage?: {
-      url: string;
-    };
-  }>;
   restaurantName?: string;
 }
 
@@ -496,23 +494,6 @@ export default function Overview() {
     };
   }, [orders, GEOAPIFY_API_KEY]);
 
-  const mapStyle = `
-    .delivery-marker {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background-color: #ef4444;
-      border: 2px solid white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    .maplibregl-map {
-      border-radius: 0.5rem;
-    }
-    .maplibregl-control-container {
-      margin: 10px;
-    }
-  `;
-
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
@@ -733,9 +714,9 @@ export default function Overview() {
         const matchesSearch = menuSearchQuery === '' || 
           item.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
           item.description.toLowerCase().includes(menuSearchQuery.toLowerCase());
-          
+        
         const matchesType = selectedFoodType === 'all' || item.foodType === selectedFoodType;
-          
+        
         return matchesSearch && matchesType;
       });
   }, [menuItems, menuSearchQuery, selectedFoodType]);
@@ -892,6 +873,19 @@ export default function Overview() {
 
   const handlePageChange = (newPage: number) => {
     setCustomersPage(newPage);
+  };
+
+  const renderCustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: any[]; label?: string }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-2 shadow-lg rounded border">
+          <p className="text-sm">{`Day ${label}`}</p>
+          <p className="text-sm font-medium">{`Earnings: $${payload[0].value.toFixed(2)}`}</p>
+          <p className="text-sm">{`Orders: ${payload[1].value}`}</p>
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -1133,8 +1127,7 @@ export default function Overview() {
                     tickFormatter={(value) => `GH₵${value.toFixed(0)}`}
                   />
                   <Tooltip 
-                    formatter={(value: number) => [`GH₵${value.toFixed(2)}`, 'Earnings']}
-                    labelFormatter={(label) => `${label}`}
+                    content={renderCustomTooltip}
                   />
                   <Bar 
                     dataKey="earnings" 
@@ -1468,7 +1461,7 @@ export default function Overview() {
                         <p className="text-sm text-gray-600 mb-2">{item.description}</p>
                         <div className="flex justify-between items-center">
                           <p className="font-medium">${item.price.toFixed(2)}</p>
-                          <Badge variant={item.isAvailable ? "success" : "destructive"}>
+                          <Badge variant={item.isAvailable ? "secondary" : "destructive"}>
                             {item.isAvailable ? "Available" : "Unavailable"}
                           </Badge>
                         </div>
