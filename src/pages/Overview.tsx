@@ -113,8 +113,11 @@ interface RestaurantStats {
 
 export default function Overview() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [setIsLoadingOrders] = useState(false);
-  const [setOrderError] = useState<string | null>(null);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
+  const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [isLoadingRestaurants, setIsLoadingRestaurants] = useState(false);
+  const [restaurantError, setRestaurantError] = useState<string | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
@@ -134,7 +137,6 @@ export default function Overview() {
   const [customerOrders, setCustomerOrders] = useState<CustomerOrder[]>([]);
   const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
   const [isLoadingCustomerOrders, setIsLoadingCustomerOrders] = useState(false);
-  const [restaurants, setRestaurants] = useState<any[]>([]);
   const [menuItems, setMenuItems] = useState<MenuType[]>([]);
   const [isLoadingMenu, setIsLoadingMenu] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
@@ -325,7 +327,7 @@ export default function Overview() {
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
-        setIsLoadingOrders(true);
+        setIsLoadingRestaurants(true);
         const userId = localStorage.getItem('delikaOnboardingId');
         const response = await fetch(
           `${API_BASE_URL}${GET_RESTAURANTS_ENDPOINT}?filter[delika_onboarding_id][eq]=${userId}`,
@@ -346,8 +348,9 @@ export default function Overview() {
         setRestaurants(data);
       } catch (error) {
         console.error('Error fetching restaurants:', error);
+        setRestaurantError('Failed to load restaurants');
       } finally {
-        setIsLoadingOrders(false);
+        setIsLoadingRestaurants(false);
       }
     };
 
