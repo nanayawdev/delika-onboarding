@@ -41,7 +41,7 @@ import {
   CalendarIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
-import type { Restaurant, Branch, Courier, OrderProgress, Order, User, MenuType, Food, OrderProduct } from '@/types';
+import type { Restaurant, Branch, Courier, OrderProgress, Order, User, MenuType, Food } from '@/types';
 import { API_BASE_URL } from '@/config';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { ErrorState } from '@/components/ui/error-state';
@@ -74,7 +74,6 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel"
-import { Pagination } from '@/components/ui/pagination';
 
 const capitalizeFirstLetter = (string: string): string => {
   return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
@@ -84,7 +83,6 @@ const GET_RESTAURANTS_ENDPOINT = import.meta.env.VITE_GET_RESTAURANTS_ENDPOINT;
 const GET_BRANCHES_ENDPOINT = import.meta.env.VITE_GET_BRANCHES_ENDPOINT;
 const GET_USERS_ENDPOINT = import.meta.env.VITE_GET_USERS_ENDPOINT;
 const GET_ORDERS_ENDPOINT = import.meta.env.VITE_GET_ORDERS_ENDPOINT;
-const GET_MENU_ENDPOINT = import.meta.env.VITE_GET_MENU_ENDPOINT;
 
 export default function RestaurantDetail() {
   const location = useLocation()
@@ -581,19 +579,6 @@ export default function RestaurantDetail() {
     const startIndex = currentSlide * itemsPerSlide;
     return menuItems.slice(startIndex, startIndex + itemsPerSlide);
   }, [menuItems, currentSlide, itemsPerSlide]);
-
-  // Filter menu items based on search
-  const filteredMenuItems = useMemo(() => {
-    if (!selectedCategory) return [];
-    const categoryItems = menuItems.find(menu => menu.foodType === selectedCategory)?.foods || [];
-    
-    if (!menuSearchQuery) return categoryItems;
-    
-    return categoryItems.filter((food: Food) => 
-      food.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
-      food.description.toLowerCase().includes(menuSearchQuery.toLowerCase())
-    );
-  }, [selectedCategory, menuItems, menuSearchQuery]);
 
   const handleCourierClick = (courier: Courier) => {
     setSelectedCourier(courier);
