@@ -43,7 +43,6 @@ import {
 import { format } from 'date-fns';
 import type { Restaurant, Branch, Courier, OrderProgress, Order, User, MenuType, Food, OrderProduct } from '@/types';
 import { API_BASE_URL } from '@/config';
-import { formatCurrency } from '@/utils/format';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { ErrorState } from '@/components/ui/error-state';
 import { EditRestaurantModal } from './edit-restaurant-modal';
@@ -75,6 +74,7 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel"
+import { Pagination } from '@/components/ui/pagination';
 
 const capitalizeFirstLetter = (string: string): string => {
   return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
@@ -126,7 +126,7 @@ export default function RestaurantDetail() {
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null)
   const [isCourierModalOpen, setIsCourierModalOpen] = useState(false)
   const [allUsers, setAllUsers] = useState<User[]>([])
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage] = useState(1)
   const ordersPerPage = 10
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined
@@ -135,9 +135,9 @@ export default function RestaurantDetail() {
     from: undefined,
     to: undefined
   })
-  const [menuItems, setMenuItems] = useState<MenuType[]>([])
-  const [isLoadingMenu, setIsLoadingMenu] = useState(false)
-  const [menuError, setMenuError] = useState<string | null>(null)
+  const [menuItems] = useState<MenuType[]>([])
+  const [isLoadingMenu] = useState(false)
+  const [menuError] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [menuSearchQuery, setMenuSearchQuery] = useState('')
   const [currentSlide, setCurrentSlide] = useState(0)
@@ -577,52 +577,10 @@ export default function RestaurantDetail() {
     return statuses;
   };
 
-  const handlePageChange = (_: React.MouseEvent<HTMLButtonElement> | null, newPage: number): void => {
-    setCurrentPage(newPage + 1);
-  };
-
   const currentSlideItems = useMemo(() => {
     const startIndex = currentSlide * itemsPerSlide;
     return menuItems.slice(startIndex, startIndex + itemsPerSlide);
   }, [menuItems, currentSlide, itemsPerSlide]);
-
-  useEffect(() => {
-    const fetchMenuItems = async () => {
-      if (!restaurant?.id || !selectedBranch?.id) return;
-      
-      setIsLoadingMenu(true);
-      setMenuError(null);
-      
-      try {
-        const response = await fetch(
-          `${API_BASE_URL}${GET_MENU_ENDPOINT}`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              restaurantId: restaurant.id,
-              branchId: selectedBranch.id
-            })
-          }
-        );
-        
-        if (!response.ok) throw new Error('Failed to fetch menu items');
-        
-        const data = await response.json();
-        setMenuItems(data);
-      } catch (error) {
-        console.error('Error fetching menu:', error);
-        setMenuError('Failed to load menu items');
-      } finally {
-        setIsLoadingMenu(false);
-      }
-    };
-
-    fetchMenuItems();
-  }, [restaurant?.id, selectedBranch?.id]);
 
   // Filter menu items based on search
   const filteredMenuItems = useMemo(() => {
@@ -637,9 +595,6 @@ export default function RestaurantDetail() {
     );
   }, [selectedCategory, menuItems, menuSearchQuery]);
 
-  // Calculate total slides needed
-  const totalSlides = Math.ceil(filteredMenuItems.length / itemsPerSlide);
-
   const handleCourierClick = (courier: Courier) => {
     setSelectedCourier(courier);
     setIsCourierModalOpen(true);
@@ -651,11 +606,6 @@ export default function RestaurantDetail() {
 
   const handleMenuSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setMenuSearchQuery(e.target.value);
-  };
-
-  // Update the product total calculation with proper typing
-  const getProductTotal = (product: OrderProduct): number => {
-    return product.quantity * product.price;
   };
 
   if (!restaurant) {
