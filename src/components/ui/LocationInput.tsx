@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react';
-import { LocationData } from '../types/location';
+import { LocationData } from '../../types/location';
 
 interface LocationInputProps {
   label: string;
@@ -44,10 +44,14 @@ const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, 
     setAddress(newAddress);
     
     if (newAddress) {
-      onLocationSelect({
-        ...prefillData,
-        address: newAddress,
-      });
+      if (prefillData?.city && prefillData.longitude && prefillData.latitude) {
+        onLocationSelect({
+          address: newAddress,
+          city: prefillData.city,
+          longitude: prefillData.longitude,
+          latitude: prefillData.latitude
+        });
+      }
     }
   };
 
@@ -65,9 +69,10 @@ const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, 
           {suggestions.map((suggestion) => (
             <li key={suggestion.properties.formatted} onClick={() => {
               setAddress(suggestion.properties.formatted);
+              const city = suggestion.properties.city || 'Unknown City';
               onLocationSelect({
                 address: suggestion.properties.formatted,
-                city: suggestion.properties.city || '',
+                city: city,
                 longitude: suggestion.properties.lon,
                 latitude: suggestion.properties.lat,
               });
