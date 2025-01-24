@@ -147,6 +147,12 @@ interface MenuType {
   restaurantName: string;
   branchName: string;
   foods: Food[];
+  foodImage?: {
+    url: string;
+  };
+  name?: string;
+  description?: string;
+  price?: number;
 }
 
 interface Courier {
@@ -162,6 +168,22 @@ interface OrderProgress {
   OnTheWay: boolean;
   Delivered: boolean;
   [key: string]: boolean; // Add index signature
+}
+
+interface User {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+  branchId?: string;
+  image?: {
+    url: string;
+  };
+}
+
+interface PaginatedOrders {
+  orders: Order[];
+  totalPages: number;
 }
 
 const capitalizeFirstLetter = (string: string): string => {
@@ -197,26 +219,26 @@ export default function RestaurantDetail() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isAddBranchModalOpen, setIsAddBranchModalOpen] = useState(false)
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false)
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [isLoadingUsers, setIsLoadingUsers] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false)
-  const [userToEdit, setUserToEdit] = useState<any>(null)
+  const [userToEdit, setUserToEdit] = useState<User | null>(null)
   const [isUserDeleteModalOpen, setIsUserDeleteModalOpen] = useState(false)
-  const [userToDelete, setUserToDelete] = useState<any>(null)
+  const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [allRestaurants, setAllRestaurants] = useState<Restaurant[]>([])
   const [isEditBranchModalOpen, setIsEditBranchModalOpen] = useState(false)
   const [branchToEdit, setBranchToEdit] = useState<Branch | null>(null)
   const [isDeleteBranchModalOpen, setIsDeleteBranchModalOpen] = useState(false)
   const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null)
-  const [ setOrders] = useState<Order[]>([]) // Define orders with a proper type
+  const [orders, setOrders] = useState<Order[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('All')
-  const [setSelectedCourier] = useState<Courier | null>(null);
-  const [ setIsCourierModalOpen] = useState(false);
-  const [allUsers, setAllUsers] = useState([]);
+  const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null)
+  const [isCourierModalOpen, setIsCourierModalOpen] = useState(false)
+  const [allUsers, setAllUsers] = useState<User[]>([])
   const [currentPage] = useState(1)
-  const ordersPerPage = 10 // You can adjust this number
+  const ordersPerPage = 10
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined
     to: Date | undefined
@@ -233,49 +255,30 @@ export default function RestaurantDetail() {
   const itemsPerSlide = 5
 
   const paginatedOrders = useMemo(() => {
-    // First apply all filters
-    const filteredResults = branchOrders.filter(order => {
-      const searchLower = searchQuery.toLowerCase()
-      
-      // Search filter
-      const matchesSearch = 
-        String(order.orderNumber || '').toLowerCase().includes(searchLower) ||
-        String(order.customerName || '').toLowerCase().includes(searchLower) ||
-        String(order.customerPhoneNumber || '').toLowerCase().includes(searchLower) ||
-        String(order.courierName || '').toLowerCase().includes(searchLower) ||
-        String(order.courierPhoneNumber || '').toLowerCase().includes(searchLower) ||
-        String(order.pickupName || '').toLowerCase().includes(searchLower) ||
-        String(order.dropoffName || '').toLowerCase().includes(searchLower)
-
-      // Status filter
-      const matchesTab = activeTab === 'All' || order.orderStatus === activeTab
-
-      // Date filter
-      let matchesDate = true
-      if (dateRange.from || dateRange.to) {
-        const orderDate = new Date(order.orderDate)
-        if (dateRange.from && dateRange.to) {
-          matchesDate = orderDate >= dateRange.from && orderDate <= dateRange.to
-        } else if (dateRange.from) {
-          matchesDate = orderDate >= dateRange.from
-        } else if (dateRange.to) {
-          matchesDate = orderDate <= dateRange.to
-        }
+    const startIndex = (currentPage - 1) * ordersPerPage;
+    const endIndex = startIndex + ordersPerPage;
+    const filteredOrders = orders.filter(order => {
+      // Apply search filter
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
+        return (
+          order.orderNumber.toLowerCase().includes(searchLower) ||
+          order.customerName.toLowerCase().includes(searchLower) ||
+          order.courierName?.toLowerCase().includes(searchLower)
+        );
       }
-
-      return matchesSearch && matchesTab && matchesDate
-    })
-
-    // Then apply pagination
-    const lastOrderIndex = currentPage * ordersPerPage
-    const firstOrderIndex = lastOrderIndex - ordersPerPage
-
+      // Apply status filter
+      if (activeTab !== 'All') {
+        return order.orderStatus === activeTab;
+      }
+      return true;
+    });
+    
     return {
-      orders: filteredResults.slice(firstOrderIndex, lastOrderIndex),
-      totalOrders: filteredResults.length,
-      totalPages: Math.ceil(filteredResults.length / ordersPerPage)
-    }
-  }, [branchOrders, searchQuery, activeTab, currentPage, ordersPerPage, dateRange])
+      orders: filteredOrders.slice(startIndex, endIndex),
+      totalPages: Math.ceil(filteredOrders.length / ordersPerPage)
+    };
+  }, [orders, currentPage, ordersPerPage, searchQuery, activeTab]);
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -653,31 +656,31 @@ export default function RestaurantDetail() {
     fetchAllUsers();
   }, []);
 
-  const getCouriersList = useMemo((): Courier[] => {
-    const couriers: Record<string, Courier> = paginatedOrders.orders.reduce((acc: Record<string, Courier>, order: Order) => {
+  const getCouriersList = useMemo(() => {
+    const couriers: Record<string, Courier> = {};
+    
+    paginatedOrders.orders.forEach((order: Order) => {
       if (order.courierName) {
-        if (!acc[order.courierName]) {
-          // Find the courier in allUsers
-          const courierUser = allUsers.find((user: any) => 
-            user === order.courierName || 
-            user === order.courierPhoneNumber
+        if (!couriers[order.courierName]) {
+          const courierUser = allUsers.find((user: User) => 
+            user.fullName === order.courierName || 
+            user.email === order.courierPhoneNumber
           );
 
-          acc[order.courierName] = {
+          couriers[order.courierName] = {
             name: order.courierName,
             phoneNumber: order.courierPhoneNumber,
-            image: courierUser?.image || null,
+            image: courierUser?.image,
             orders: []
           };
         }
-        acc[order.courierName].orders.push(order);
+        couriers[order.courierName].orders.push(order);
       }
-      return acc;
-    }, {});
+    });
+    
     return Object.values(couriers);
   }, [paginatedOrders.orders, allUsers]);
 
-  // Add this helper function to get the latest order status
   const getOrderProgress = (orders: Order[]): OrderProgress => {
     const statuses: OrderProgress = {
       Assigned: false,
@@ -686,9 +689,8 @@ export default function RestaurantDetail() {
       Delivered: false
     };
 
-    // Check the latest order status
-    const latestOrder = orders[orders.length - 1];
-    if (latestOrder) {
+    if (orders.length > 0) {
+      const latestOrder = orders[orders.length - 1];
       switch (latestOrder.orderStatus) {
         case 'Delivered':
           statuses.Delivered = true;
@@ -716,13 +718,13 @@ export default function RestaurantDetail() {
 
   // Add pagination handler
   const handlePageChange = (page: number) => {
-    (page)
+    setCurrentSlide(page - 1)
   }
+
   const currentSlideItems = useMemo(() => {
     const startIndex = currentSlide * itemsPerSlide;
     return menuItems.slice(startIndex, startIndex + itemsPerSlide);
   }, [menuItems, currentSlide, itemsPerSlide]);
-
 
   useEffect(() => {
     const fetchMenuItems = async () => {
@@ -778,6 +780,11 @@ export default function RestaurantDetail() {
   // Calculate total slides needed
   const totalSlides = Math.ceil(filteredMenuItems.length / itemsPerSlide);
 
+  const handleCourierClick = (courier: Courier) => {
+    setSelectedCourier(courier);
+    setIsCourierModalOpen(true);
+  };
+
   if (!restaurant) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -785,7 +792,6 @@ export default function RestaurantDetail() {
       </div>
     )
   }
-
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -1166,23 +1172,23 @@ export default function RestaurantDetail() {
                               className="w-full"
                             >
                               <CarouselContent className="-ml-2 md:-ml-4">
-                                {currentSlideItems.map((food, index) => (
+                                {currentSlideItems.map((menuType, index) => (
                                   <CarouselItem key={index} className="pl-2 md:pl-4 basis-1/5">
                                     <Card className="overflow-hidden bg-white hover:shadow-lg transition-shadow">
-                                      {food.foodImage && (
+                                      {menuType.foods[0]?.foodImage && (
                                         <div className="h-48 overflow-hidden">
                                           <img 
-                                            src={food.foodImage.url} 
-                                            alt={food.name}
+                                            src={menuType.foods[0].foodImage.url} 
+                                            alt={menuType.foods[0].name}
                                             className="w-full h-full object-cover"
                                           />
                                         </div>
                                       )}
                                       <CardContent className="p-4">
-                                        <h4 className="font-semibold">{food.name}</h4>
-                                        <p className="text-sm text-gray-600 mt-1">{food.description}</p>
+                                        <h4 className="font-semibold">{menuType.foods[0]?.name || 'Untitled'}</h4>
+                                        <p className="text-sm text-gray-600 mt-1">{menuType.foods[0]?.description || 'No description'}</p>
                                         <p className="text-sm font-medium text-green-600 mt-2">
-                                          GH₵{Number(food.price).toFixed(2)}
+                                          GH₵{Number(menuType.foods[0]?.price || 0).toFixed(2)}
                                         </p>
                                       </CardContent>
                                     </Card>
@@ -1410,10 +1416,7 @@ export default function RestaurantDetail() {
                                       <Card 
                                         key={courier.name}
                                         className="cursor-pointer hover:shadow-lg transition-shadow bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-                                        onClick={() => {
-                                          setSelectedCourier(courier);
-                                          setIsCourierModalOpen(true);
-                                        }}
+                                        onClick={() => handleCourierClick(courier)}
                                       >
                                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                           <div className="flex items-center gap-3">
