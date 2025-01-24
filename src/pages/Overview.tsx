@@ -1,36 +1,33 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { API_BASE_URL, GET_ORDERS_ENDPOINT, GET_RESTAURANTS_ENDPOINT, GET_ALL_MENU_ENDPOINT } from "@/lib/constants";
+import { Order, Customer, CustomerOrder, MenuType, CourierStats } from "@/types";
+import { toast } from "sonner";
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { mapStyle } from "@/styles/map-style";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { DollarSign, TrendingUp, Users, Route, Building2, ChartBar, BadgeCent } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { API_BASE_URL, GET_ORDERS_ENDPOINT, GET_RESTAURANTS_ENDPOINT, GET_ALL_MENU_ENDPOINT } from "@/lib/constants";
-import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import Papa from 'papaparse';
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { toast } from "sonner";   
+import { Pagination } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 
 const GEOAPIFY_API_KEY = import.meta.env.VITE_GEOAPIFY_API_KEY;
-
-interface Courier {
-  name: string;
-  phoneNumber: string;
-  image: string | null;
-  orders: Order[];
-}
 
 interface Order {
   courierName: string;
@@ -89,24 +86,25 @@ interface CustomerOrder {
 }
 
 interface MenuType {
-  foodType: string;
-  foodTypeImage: {
-    url: string;
-  };
-  restaurantName: string;
-  branchName: string;
-  foods: Food[];
-}
-
-interface Food {
+  id: string;
   name: string;
-  price: number;
   description: string;
-  quantity: number;
-  sold: number;
-  foodImage?: {
-    url: string;
-  };
+  price: number;
+  foodImage: string;
+  restaurantId: string;
+  foodType: string;
+  isAvailable: boolean;
+  foods?: Array<{
+    name: string;
+    price: number;
+    description: string;
+    quantity: number;
+    sold: number;
+    foodImage?: {
+      url: string;
+    };
+  }>;
+  restaurantName?: string;
 }
 
 export default function Overview() {
@@ -729,36 +727,28 @@ export default function Overview() {
     return ['all', ...Array.from(types)];
   }, [menuItems]);
 
-  const filteredAndPaginatedMenuItems = useMemo(() => {
-    let items = menuItems;
-    
-    if (selectedFoodType !== 'all') {
-      items = items.filter(item => item.foodType === selectedFoodType);
-    }
-    
-    if (menuSearchQuery) {
-      items = items.map(item => ({
-        ...item,
-        foods: item.foods.filter(food => 
-          food.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
-          food.description.toLowerCase().includes(menuSearchQuery.toLowerCase())
-        )
-      })).filter(item => item.foods.length > 0);
-    }
+  const filteredMenuItems = useMemo(() => {
+    return menuItems
+      .filter(item => {
+        const matchesSearch = menuSearchQuery === '' || 
+          item.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
+          item.description.toLowerCase().includes(menuSearchQuery.toLowerCase());
+          
+        const matchesType = selectedFoodType === 'all' || item.foodType === selectedFoodType;
+          
+        return matchesSearch && matchesType;
+      });
+  }, [menuItems, menuSearchQuery, selectedFoodType]);
 
-    const flattenedItems = items.flatMap(item => 
-      item.foods.map(food => ({ ...food, foodType: item.foodType, restaurantName: item.restaurantName }))
-    );
-    
+  const paginatedMenuItems = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    
     return {
-      items: flattenedItems.slice(startIndex, endIndex),
-      totalItems: flattenedItems.length,
-      totalPages: Math.ceil(flattenedItems.length / itemsPerPage)
+      items: filteredMenuItems.slice(startIndex, endIndex),
+      totalItems: filteredMenuItems.length,
+      totalPages: Math.ceil(filteredMenuItems.length / itemsPerPage)
     };
-  }, [menuItems, selectedFoodType, menuSearchQuery, currentPage]);
+  }, [filteredMenuItems, currentPage, itemsPerPage]);
 
   const paginatedRecentSales = useMemo(() => {
     const allSales = Object.values(recentSalesByRestaurant).flat().sort((a, b) => 
@@ -899,6 +889,10 @@ export default function Overview() {
       totalRevenue: totalSpent
     };
   }, [orders, selectedRewardsMonth, restaurants]);
+
+  const handlePageChange = (newPage: number) => {
+    setCustomersPage(newPage);
+  };
 
   return (
     <div className="container mx-auto p-6 mt-32">
@@ -1451,45 +1445,32 @@ export default function Overview() {
               <div className="text-center py-8">
                 <p className="text-red-500">{menuError}</p>
               </div>
-            ) : filteredAndPaginatedMenuItems.items.length === 0 ? (
+            ) : paginatedMenuItems.items.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-500">No menu items found</p>
               </div>
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  {filteredAndPaginatedMenuItems.items.map((food) => (
-                    <Card key={`${food.name}-${food.restaurantName}`} className="border overflow-hidden hover:shadow-lg transition-shadow bg-white">
-                      {food.foodImage && (
-                        <div className="h-48 overflow-hidden">
-                          <img 
-                            src={food.foodImage.url} 
-                            alt={food.name}
-                            className="w-full h-full object-cover"
+                  {paginatedMenuItems.items.map((item) => (
+                    <Card key={`${item.name}-${item.restaurantName}`} className="border overflow-hidden hover:shadow-lg transition-shadow bg-white">
+                      {item.foodImage && (
+                        <div className="relative h-48 w-full">
+                          <img
+                            src={item.foodImage}
+                            alt={item.name}
+                            className="absolute inset-0 w-full h-full object-cover"
                           />
                         </div>
                       )}
                       <CardContent className="p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <h4 className="font-semibold truncate max-w-[150px]" title={food.name}>{food.name}</h4>
-                            <p className="text-sm text-gray-500 truncate max-w-[150px]" title={food.restaurantName}>
-                              {food.restaurantName || 'Unknown Restaurant'}
-                            </p>
-                          </div>
-                          <Badge variant="outline" className="ml-2 shrink-0">{food.foodType}</Badge>
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1 line-clamp-2" title={food.description}>
-                          {food.description}
-                        </p>
-                        <div className="flex justify-between items-center mt-3">
-                          <p className="text-sm font-medium text-green-600">
-                            GH₵{Number(food.price).toFixed(2)}
-                          </p>
-                          <div className="text-sm text-gray-500">
-                            <p>Stock: {food.quantity || 0}</p>
-                            <p>Sold: {food.sold || 0}</p>
-                          </div>
+                        <h3 className="font-semibold text-lg mb-1">{item.name}</h3>
+                        <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+                        <div className="flex justify-between items-center">
+                          <p className="font-medium">${item.price.toFixed(2)}</p>
+                          <Badge variant={item.isAvailable ? "success" : "destructive"}>
+                            {item.isAvailable ? "Available" : "Unavailable"}
+                          </Badge>
                         </div>
                       </CardContent>
                     </Card>
@@ -1498,7 +1479,7 @@ export default function Overview() {
                 
                 <div className="flex justify-between items-center mt-6">
                   <p className="text-sm text-gray-500">
-                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndPaginatedMenuItems.totalItems)} of {filteredAndPaginatedMenuItems.totalItems} items
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, paginatedMenuItems.totalItems)} of {paginatedMenuItems.totalItems} items
                   </p>
                   <div className="flex gap-2">
                     <Button
@@ -1512,8 +1493,8 @@ export default function Overview() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(filteredAndPaginatedMenuItems.totalPages, prev + 1))}
-                      disabled={currentPage === filteredAndPaginatedMenuItems.totalPages}
+                      onClick={() => setCurrentPage(prev => Math.min(paginatedMenuItems.totalPages, prev + 1))}
+                      disabled={currentPage === paginatedMenuItems.totalPages}
                     >
                       Next
                     </Button>
