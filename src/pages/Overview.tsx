@@ -113,23 +113,16 @@ export default function Overview() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
-  const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
-  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
-  const [couriers, setCouriers] = useState<Courier[]>([]);
-  const [selectedRestaurant, setSelectedRestaurant] = useState<string | null>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
-  const [selectedOverviewMonth, setSelectedOverviewMonth] = useState(() => {
+  const [selectedOverviewMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
   const [selectedRecentSalesRestaurant, setSelectedRecentSalesRestaurant] = useState<string>('all');
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
-  const [orderError, setOrderError] = useState<string | null>(null);
-  const mapRef = useRef<HTMLDivElement>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
   const [customerError, setCustomerError] = useState<string | null>(null);
@@ -140,7 +133,6 @@ export default function Overview() {
   const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
   const [isLoadingCustomerOrders, setIsLoadingCustomerOrders] = useState(false);
   const [restaurants, setRestaurants] = useState<any[]>([]);
-  const [isLoadingRestaurants, setIsLoadingRestaurants] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuType[]>([]);
   const [isLoadingMenu, setIsLoadingMenu] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
@@ -183,6 +175,52 @@ export default function Overview() {
 
     return dailyData;
   }, [orders, selectedOverviewMonth]);
+
+  const filterOrdersByMonth = (orders: Order[], monthStr: string) => {
+    const [year, month] = monthStr.split('-').map(Number);
+    return orders.filter(order => {
+      const orderDate = new Date(order.orderDate);
+      return orderDate.getFullYear() === year && orderDate.getMonth() === month - 1;
+    });
+  };
+
+  const monthlyMetrics = useMemo(() => {
+    const filteredOrders = filterOrdersByMonth(orders, selectedMonth);
+    
+    const revenue = filteredOrders.reduce((acc, order) => {
+      const deliveryPrice = parseFloat(order.deliveryPrice?.toString() || '0');
+      return acc + (isNaN(deliveryPrice) ? 0 : deliveryPrice);
+    }, 0);
+
+    const courierStats = filteredOrders.reduce((acc: { [key: string]: CourierStats }, order) => {
+      if (order.courierName) {
+        if (!acc[order.courierName]) {
+          acc[order.courierName] = {
+            name: order.courierName,
+            totalDeliveries: 0,
+            totalRevenue: 0
+          };
+        }
+        acc[order.courierName].totalDeliveries++;
+        acc[order.courierName].totalRevenue += parseFloat(order.deliveryPrice?.toString() || '0');
+      }
+      return acc;
+    }, {});
+
+    const bestCourier = Object.values(courierStats).reduce((best: CourierStats | null, current: CourierStats) => {
+      return (!best || current.totalRevenue > best.totalRevenue) ? current : best;
+    }, null);
+
+    const totalDistance = filteredOrders.reduce((acc, order) => {
+      return acc + (parseFloat(order.deliveryDistance?.toString() || '0') || 0);
+    }, 0);
+
+    return {
+      revenue,
+      bestCourier,
+      totalDistance
+    };
+  }, [orders, selectedMonth]);
 
   const activeCouriers = [
     { 
@@ -280,52 +318,6 @@ export default function Overview() {
     return statuses;
   };
 
-  const filterOrdersByMonth = (orders: Order[], monthStr: string) => {
-    const [year, month] = monthStr.split('-').map(Number);
-    return orders.filter(order => {
-      const orderDate = new Date(order.orderDate);
-      return orderDate.getFullYear() === year && orderDate.getMonth() === month - 1;
-    });
-  };
-
-  const monthlyMetrics = useMemo(() => {
-    const filteredOrders = filterOrdersByMonth(orders, selectedMonth);
-    
-    const revenue = filteredOrders.reduce((acc, order) => {
-      const deliveryPrice = parseFloat(order.deliveryPrice?.toString() || '0');
-      return acc + (isNaN(deliveryPrice) ? 0 : deliveryPrice);
-    }, 0);
-
-    const courierStats = filteredOrders.reduce((acc: { [key: string]: CourierStats }, order) => {
-      if (order.courierName) {
-        if (!acc[order.courierName]) {
-          acc[order.courierName] = {
-            name: order.courierName,
-            totalDeliveries: 0,
-            totalRevenue: 0
-          };
-        }
-        acc[order.courierName].totalDeliveries++;
-        acc[order.courierName].totalRevenue += parseFloat(order.deliveryPrice?.toString() || '0');
-      }
-      return acc;
-    }, {});
-
-    const bestCourier = Object.values(courierStats).reduce((best: CourierStats | null, current: CourierStats) => {
-      return (!best || current.totalRevenue > best.totalRevenue) ? current : best;
-    }, null);
-
-    const totalDistance = filteredOrders.reduce((acc, order) => {
-      return acc + (parseFloat(order.deliveryDistance?.toString() || '0') || 0);
-    }, 0);
-
-    return {
-      revenue,
-      bestCourier,
-      totalDistance
-    };
-  }, [orders, selectedMonth]);
-
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -369,51 +361,35 @@ export default function Overview() {
   }, [orders]);
 
   useEffect(() => {
-    const fetchCouriers = async () => {
+    const fetchRestaurants = async () => {
       try {
+        setIsLoadingOrders(true);
         const userId = localStorage.getItem('delikaOnboardingId');
         const response = await fetch(
-          `${API_BASE_URL}${GET_ORDERS_ENDPOINT}?filter[delika_onboarding_id][eq]=${userId}`,
+          `${API_BASE_URL}${GET_RESTAURANTS_ENDPOINT}?filter[delika_onboarding_id][eq]=${userId}`,
           {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
               'Accept': 'application/json',
               'Content-Type': 'application/json'
-            },
-            method: 'GET'
+            }
           }
         );
-        
+
         if (!response.ok) {
-          throw new Error('Failed to fetch orders');
+          throw new Error('Failed to fetch restaurants');
         }
-        
+
         const data = await response.json();
-        console.log('Orders data:', data);
-        
-        const couriersList = data.reduce((acc: { [key: string]: Courier }, order: Order) => {
-          if (order.courierName) {
-            if (!acc[order.courierName]) {
-              acc[order.courierName] = {
-                name: order.courierName,
-                phoneNumber: order.courierPhoneNumber,
-                image: null,
-                orders: []
-              };
-            }
-            acc[order.courierName].orders.push(order);
-          }
-          return acc;
-        }, {});
-        
-        console.log('Grouped couriers:', Object.values(couriersList));
-        setCouriers(Object.values(couriersList));
+        setRestaurants(data);
       } catch (error) {
-        console.error('Error fetching couriers:', error);
+        console.error('Error fetching restaurants:', error);
+      } finally {
+        setIsLoadingOrders(false);
       }
     };
 
-    fetchCouriers();
+    fetchRestaurants();
   }, []);
 
   const handleCourierClick = async (courier: Courier) => {
@@ -817,38 +793,6 @@ export default function Overview() {
       setIsLoadingCustomerOrders(false);
     }
   };
-
-  useEffect(() => {
-    const fetchRestaurants = async () => {
-      try {
-        setIsLoadingRestaurants(true);
-        const userId = localStorage.getItem('delikaOnboardingId');
-        const response = await fetch(
-          `${API_BASE_URL}${GET_RESTAURANTS_ENDPOINT}?filter[delika_onboarding_id][eq]=${userId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch restaurants');
-        }
-
-        const data = await response.json();
-        setRestaurants(data);
-      } catch (error) {
-        console.error('Error fetching restaurants:', error);
-      } finally {
-        setIsLoadingRestaurants(false);
-      }
-    };
-
-    fetchRestaurants();
-  }, []);
 
   useEffect(() => {
     const fetchAllMenuItems = async () => {
