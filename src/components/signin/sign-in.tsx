@@ -67,9 +67,10 @@ export default function SignIn() {
     if (validateForm()) {
       setIsLoading(true)
       try {
-        console.log('Attempting to sign in with URL:', `${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SIGN_IN_ENDPOINT}`);
+        const signInUrl = `${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SIGN_IN_ENDPOINT}`;
+        console.log('Attempting to sign in with URL:', signInUrl);
         
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SIGN_IN_ENDPOINT}`, {
+        const response = await fetch(signInUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -78,20 +79,28 @@ export default function SignIn() {
         })
 
         if (!response.ok) {
-          const errorData = await response.json();
-          console.error('Sign in failed with status:', response.status);
-          console.error('Error details:', errorData);
-          throw new Error(`Sign in failed: ${response.status} ${errorData?.message || ''}`);
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await response.json();
+            console.error('Sign in failed with status:', response.status);
+            console.error('Error details:', errorData);
+            throw new Error(`Sign in failed: ${response.status} ${errorData?.message || ''}`);
+          } else {
+            const textError = await response.text();
+            console.error('Non-JSON error response:', textError);
+            throw new Error(`Sign in failed: ${response.status} - Invalid API endpoint`);
+          }
         }
 
         const data: SignInResponse = await response.json()
 
-        if (response.ok && data.authToken) {
+        if (data.authToken) {
           setTempAuthData(data)
           // Generate and send OTP
-          console.log('Sending OTP to URL:', `${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SEND_OTP_ENDPOINT}`);
+          const otpUrl = `${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SEND_OTP_ENDPOINT}`;
+          console.log('Sending OTP to URL:', otpUrl);
           
-          const otpResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SEND_OTP_ENDPOINT}`, {
+          const otpResponse = await fetch(otpUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -102,10 +111,17 @@ export default function SignIn() {
           })
 
           if (!otpResponse.ok) {
-            const otpErrorData = await otpResponse.json();
-            console.error('OTP request failed with status:', otpResponse.status);
-            console.error('OTP error details:', otpErrorData);
-            throw new Error('Failed to send OTP');
+            const contentType = otpResponse.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+              const otpErrorData = await otpResponse.json();
+              console.error('OTP request failed with status:', otpResponse.status);
+              console.error('OTP error details:', otpErrorData);
+              throw new Error(`Failed to send OTP: ${otpErrorData?.message || ''}`);
+            } else {
+              const textError = await otpResponse.text();
+              console.error('Non-JSON error response from OTP endpoint:', textError);
+              throw new Error(`Failed to send OTP: Invalid API endpoint`);
+            }
           }
 
           setShowOTPModal(true)
