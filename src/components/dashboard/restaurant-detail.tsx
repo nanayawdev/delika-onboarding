@@ -34,16 +34,7 @@ import { EditBranchModal } from './edit-branch-modal'
 import krontivaLogo from '/krontivalogo.png' // Adjust the path as necessary
 import PurseIcon from '@/assets/icons/purse-stroke-rounded'
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Papa from 'papaparse'
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
