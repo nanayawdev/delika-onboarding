@@ -68,6 +68,8 @@ export default function SignIn() {
     if (validateForm()) {
       setIsLoading(true)
       try {
+        console.log('Attempting to sign in with URL:', `${API_BASE_URL}${SIGN_IN_ENDPOINT}`);
+        
         const response = await fetch(`${API_BASE_URL}${SIGN_IN_ENDPOINT}`, {
           method: 'POST',
           headers: {
@@ -76,11 +78,20 @@ export default function SignIn() {
           body: JSON.stringify(signInDetails)
         })
 
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Sign in failed with status:', response.status);
+          console.error('Error details:', errorData);
+          throw new Error(`Sign in failed: ${response.status} ${errorData?.message || ''}`);
+        }
+
         const data: SignInResponse = await response.json()
 
         if (response.ok && data.authToken) {
           setTempAuthData(data)
           // Generate and send OTP
+          console.log('Sending OTP to URL:', `${API_BASE_URL}${SEND_OTP_ENDPOINT}`);
+          
           const otpResponse = await fetch(`${API_BASE_URL}${SEND_OTP_ENDPOINT}`, {
             method: 'POST',
             headers: {
@@ -91,11 +102,14 @@ export default function SignIn() {
             })
           })
 
-          if (otpResponse.ok) {
-            setShowOTPModal(true)
-          } else {
-            throw new Error('Failed to send OTP')
+          if (!otpResponse.ok) {
+            const otpErrorData = await otpResponse.json();
+            console.error('OTP request failed with status:', otpResponse.status);
+            console.error('OTP error details:', otpErrorData);
+            throw new Error('Failed to send OTP');
           }
+
+          setShowOTPModal(true)
         } else {
           setErrors(prev => ({
             ...prev,
@@ -103,8 +117,8 @@ export default function SignIn() {
           }))
         }
       } catch (error) {
-        console.error('Sign in failed:', error)
-        toast.error('An error occurred during sign in')
+        console.error('Full error:', error);
+        toast.error(error instanceof Error ? error.message : 'An error occurred during sign in')
       } finally {
         setIsLoading(false)
       }
