@@ -10,7 +10,6 @@ import { OTPVerificationModal } from './otp-verification-modal'
 import { toast } from "sonner"
 import { Sonner } from "@/components/ui/sonner"
 import { Eye, EyeOff } from "lucide-react"
-import { API_BASE_URL, SIGN_IN_ENDPOINT, SEND_OTP_ENDPOINT } from "@/lib/constants"
 
 interface SignInDetails {
   email: string
@@ -68,9 +67,9 @@ export default function SignIn() {
     if (validateForm()) {
       setIsLoading(true)
       try {
-        console.log('Attempting to sign in with URL:', `${API_BASE_URL}${SIGN_IN_ENDPOINT}`);
+        console.log('Attempting to sign in with URL:', `${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SIGN_IN_ENDPOINT}`);
         
-        const response = await fetch(`${API_BASE_URL}${SIGN_IN_ENDPOINT}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SIGN_IN_ENDPOINT}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -90,9 +89,9 @@ export default function SignIn() {
         if (response.ok && data.authToken) {
           setTempAuthData(data)
           // Generate and send OTP
-          console.log('Sending OTP to URL:', `${API_BASE_URL}${SEND_OTP_ENDPOINT}`);
+          console.log('Sending OTP to URL:', `${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SEND_OTP_ENDPOINT}`);
           
-          const otpResponse = await fetch(`${API_BASE_URL}${SEND_OTP_ENDPOINT}`, {
+          const otpResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SEND_OTP_ENDPOINT}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
