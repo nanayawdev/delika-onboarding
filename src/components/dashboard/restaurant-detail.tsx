@@ -215,10 +215,8 @@ export default function RestaurantDetail() {
   const [setSelectedCourier] = useState<Courier | null>(null);
   const [ setIsCourierModalOpen] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage] = useState(1)
   const ordersPerPage = 10 // You can adjust this number
-  const [page, setPage] = useState(1)
-  const [pageSize] = useState(10)
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined
     to: Date | undefined
@@ -717,13 +715,14 @@ export default function RestaurantDetail() {
   };
 
   // Add pagination handler
-  const handlePageChange = undefined;
+  const handlePageChange = (page: number) => {
+    (page)
+  }
   const currentSlideItems = useMemo(() => {
     const startIndex = currentSlide * itemsPerSlide;
     return menuItems.slice(startIndex, startIndex + itemsPerSlide);
   }, [menuItems, currentSlide, itemsPerSlide]);
-  const nextSlide = undefined;
-  const previousSlide = undefined;
+
 
   useEffect(() => {
     const fetchMenuItems = async () => {
