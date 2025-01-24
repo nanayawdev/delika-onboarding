@@ -5,8 +5,8 @@ import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, Share2, MessageSquare, PenSquare, Building2, TrendingUp, Building, DollarSign, RefreshCcw, Users, UsersIcon, MoreHorizontal, Pencil, Trash2, User, Search } from "lucide-react"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, Building2, TrendingUp, Building, RefreshCcw, UsersIcon, MoreHorizontal, Pencil, Trash2, User, Search } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { EditRestaurantModal } from './edit-restaurant-modal'
 import { AddBranchModal } from './add-branch-modal'
@@ -119,7 +119,7 @@ interface Order {
   trackingUrl: string;
   courierName: string;
   courierPhoneNumber: string;
-  orderStatus: string;
+  orderStatus: 'Assigned' | 'Pickup' | 'OnTheWay' | 'Delivered' | string;
   orderDate: string;
   deliveryPrice: number;
   orderPrice: number;
@@ -136,6 +136,7 @@ interface Order {
   products: OrderProduct[];
   pickup: OrderLocation[];
   dropOff: OrderLocation[];
+  [key: string]: any; // Add index signature
 }
 
 interface Food {
@@ -170,6 +171,10 @@ interface OrderProgress {
   OnTheWay: boolean;
   Delivered: boolean;
 }
+
+const capitalizeFirstLetter = (string: string): string => {
+  return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+};
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const GET_RESTAURANTS_ENDPOINT = import.meta.env.VITE_GET_RESTAURANTS_ENDPOINT;
@@ -212,11 +217,11 @@ export default function RestaurantDetail() {
   const [branchToEdit, setBranchToEdit] = useState<Branch | null>(null)
   const [isDeleteBranchModalOpen, setIsDeleteBranchModalOpen] = useState(false)
   const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null)
-  const [orders, setOrders] = useState<Order[]>([]) // Define orders with a proper type
+  const [ setOrders] = useState<Order[]>([]) // Define orders with a proper type
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('All')
-  const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
-  const [isCourierModalOpen, setIsCourierModalOpen] = useState(false);
+  const [setSelectedCourier] = useState<Courier | null>(null);
+  const [ setIsCourierModalOpen] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1)
   const ordersPerPage = 10 // You can adjust this number
@@ -658,14 +663,14 @@ export default function RestaurantDetail() {
     fetchAllUsers();
   }, []);
 
-  const getCouriersList = useMemo(() => {
+  const getCouriersList = useMemo((): Courier[] => {
     const couriers = paginatedOrders.orders.reduce((acc, order) => {
       if (order.courierName) {
         if (!acc[order.courierName]) {
           // Find the courier in allUsers
           const courierUser = allUsers.find(user => 
-            user.fullName === order.courierName || 
-            user.phoneNumber === order.courierPhoneNumber
+            user === order.courierName || 
+            user === order.courierPhoneNumber
           );
 
           acc[order.courierName] = {
@@ -1039,9 +1044,7 @@ export default function RestaurantDetail() {
                                 <TableCell>{user.email}</TableCell>
                                 <TableCell>
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    {user.role.split('_').map(word => 
-                                      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-                                    ).join(' ')}
+                                    {capitalizeFirstLetter(user.role.split('_').join(' '))}
                                   </span>
                                 </TableCell>
                                 <TableCell>
