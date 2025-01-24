@@ -177,7 +177,7 @@ const GET_MENU_ENDPOINT = import.meta.env.VITE_GET_MENU_ENDPOINT;
 export default function RestaurantDetail() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { restaurant: initialRestaurant, restaurants = [] } = location.state || {}
+  const { restaurant: initialRestaurant = [] } = location.state || {}
   const [restaurant, setRestaurant] = useState(() => {
     const delikaOnboardingId = localStorage.getItem('delikaOnboardingId')
     return initialRestaurant ? {
