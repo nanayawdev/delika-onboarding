@@ -6,7 +6,13 @@ import { Label } from "@/components/ui/label"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { toast } from "sonner"
 import LocationInput from "@/components/ui/LocationInput"
-import { LocationData } from '../../../types/location'; // Ensure this path is correct
+
+interface LocationData {
+  address: string;
+  city: string;
+  longitude: number;
+  latitude: number;
+}
 
 interface Branch {
   id: string
@@ -114,14 +120,13 @@ export function EditBranchModal({ isOpen, onClose, onSuccess, branch, restaurant
           <div className="space-y-2">
             <Label htmlFor="branchLocation">Location</Label>
             <LocationInput
-              id="branchLocation"
               label="Branch Location"
               onLocationSelect={handleLocationSelect}
               prefillData={{
                 address: formData.branchLocation,
                 city: formData.branchCity,
-                longitude: parseFloat(formData.branchLongitude),
-                latitude: parseFloat(formData.branchLatitude),
+                longitude: parseFloat(formData.branchLongitude) || 0,
+                latitude: parseFloat(formData.branchLatitude) || 0,
               }}
             />
           </div>

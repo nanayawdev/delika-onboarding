@@ -32,7 +32,7 @@ interface UserDetails {
   city: string
   country: string
   postalCode: string
-  image?: File | null
+  image?: { url: string } | null
   branchId?: string
   restaurantId: string
 }
@@ -95,8 +95,8 @@ export function EditUserModal({
         }
 
         const users = await response.json()
-        const uniqueRoles = [...new Set(users.map((user: any) => user.role))]
-        setRoles(uniqueRoles)
+        const uniqueRoles = [...new Set(users.map((user: { role: string }) => user.role))]
+        setRoles(uniqueRoles.filter((role): role is string => typeof role === 'string'))
       } catch (error) {
         console.error('Error fetching roles:', error)
         toast.error('Failed to load roles')
@@ -231,26 +231,6 @@ export function EditUserModal({
       setSelectedFile(e.target.files[0])
     }
   }
-
-  const handleDeleteUser = async () => {
-    if (!userToDelete) return;
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}${DELETE_USER_ENDPOINT}/${userToDelete.id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-          }
-        }
-      );
-
-      // existing code...
-    } catch (error) {
-      // existing error handling...
-    }
-  };
 
   const validRoles = roles.filter(role => role && role.trim() !== '');
   const validBranches = branches.filter(branch => branch && branch.id && branch.id.trim() !== '');

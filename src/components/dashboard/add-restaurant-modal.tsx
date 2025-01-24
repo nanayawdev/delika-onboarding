@@ -25,6 +25,14 @@ interface RestaurantDetails {
   restaurantAddress: string;
 }
 
+interface RestaurantErrors {
+  image?: string;
+  restaurantName?: string;
+  restaurantEmail?: string;
+  restaurantPhoneNumber?: string;
+  restaurantAddress?: string;
+}
+
 interface LocationData {
   address: string;
   city: string;
@@ -42,7 +50,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const ADD_RESTAURANT_ENDPOINT = import.meta.env.VITE_ADD_RESTAURANT_ENDPOINT;
 
 export function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRestaurantModalProps) {
-  const [restaurantDetails, setRestaurantDetails] = useState<Partial<RestaurantDetails>>({
+  const [restaurantDetails, setRestaurantDetails] = useState<RestaurantDetails>({
     image: null,
     restaurantName: "",
     restaurantEmail: "",
@@ -50,7 +58,7 @@ export function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRestaurant
     restaurantAddress: "",
   })
   const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [errors, setErrors] = useState<Partial<RestaurantDetails>>({})
+  const [errors, setErrors] = useState<RestaurantErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,38 +66,47 @@ export function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRestaurant
     
     if (type === 'file' && files && files[0]) {
       const file = files[0]
-      setRestaurantDetails((prev) => ({ ...prev, image: file as File | null })); 
+      setRestaurantDetails((prev) => ({ ...prev, image: file }))
       const previewUrl = URL.createObjectURL(file)
       setImagePreview(previewUrl)
       if (errors.image) {
-        setErrors(prev => ({ ...prev, image: '' }))
+        setErrors(prev => ({ ...prev, image: undefined }))
       }
     } else {
       setRestaurantDetails(prev => ({ ...prev, [name]: value }))
-      if (errors[name as keyof RestaurantDetails]) {
-        setErrors(prev => ({ ...prev, [name]: '' }))
+      if (errors[name as keyof RestaurantErrors]) {
+        setErrors(prev => ({ ...prev, [name]: undefined }))
       }
     }
   }
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<RestaurantDetails> = {}
+    const newErrors: RestaurantErrors = {}
     let isValid = true
 
-    Object.entries(restaurantDetails).forEach(([key, value]) => {
-      if (key !== 'image' && !value?.trim()) {
-        newErrors[key as keyof RestaurantDetails] = 'This field is required'
-        isValid = false
-      }
-    })
+    if (!restaurantDetails.restaurantName.trim()) {
+      newErrors.restaurantName = 'This field is required'
+      isValid = false
+    }
 
-    if (restaurantDetails.restaurantEmail && !/\S+@\S+\.\S+/.test(restaurantDetails.restaurantEmail)) {
+    if (!restaurantDetails.restaurantEmail.trim()) {
+      newErrors.restaurantEmail = 'This field is required'
+      isValid = false
+    } else if (!/\S+@\S+\.\S+/.test(restaurantDetails.restaurantEmail)) {
       newErrors.restaurantEmail = 'Please enter a valid email'
       isValid = false
     }
 
-    if (restaurantDetails.restaurantPhoneNumber && !/^\+?[\d\s-]{10,}$/.test(restaurantDetails.restaurantPhoneNumber)) {
+    if (!restaurantDetails.restaurantPhoneNumber.trim()) {
+      newErrors.restaurantPhoneNumber = 'This field is required'
+      isValid = false
+    } else if (!/^\+?[\d\s-]{10,}$/.test(restaurantDetails.restaurantPhoneNumber)) {
       newErrors.restaurantPhoneNumber = 'Please enter a valid phone number'
+      isValid = false
+    }
+
+    if (!restaurantDetails.restaurantAddress.trim()) {
+      newErrors.restaurantAddress = 'This field is required'
       isValid = false
     }
 
@@ -192,6 +209,7 @@ export function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRestaurant
             <div className="space-y-2">
               <Label htmlFor="restaurantAddress">Location</Label>
               <LocationInput
+                label="Restaurant Location"
                 onLocationSelect={(location: LocationData) => {
                   setRestaurantDetails((prev) => ({
                     ...prev,
