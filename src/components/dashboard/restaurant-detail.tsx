@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 import {
@@ -31,7 +31,7 @@ import {
   TableRow,
   TextField,
   Typography,
-} from '@/components/ui';
+} from '../../components/ui/table';
 import {
   ArrowLeft,
   Mail,
@@ -86,7 +86,6 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel"
-import { TableHeader } from '../ui/table';
 
 interface Restaurant {
   id: string
