@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import type React from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,11 +18,18 @@ import { toast } from "sonner"
 import LocationInput from "@/components/ui/LocationInput";
 
 interface RestaurantDetails {
-  restaurantName: string
-  restaurantEmail: string
-  restaurantPhoneNumber: string
-  restaurantAddress: string
-  image: File | null
+  image: File | null;
+  restaurantName: string;
+  restaurantEmail: string;
+  restaurantPhoneNumber: string;
+  restaurantAddress: string;
+}
+
+interface LocationData {
+  address: string;
+  city: string;
+  longitude: number;
+  latitude: number;
 }
 
 interface AddRestaurantModalProps {
@@ -34,12 +42,12 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const ADD_RESTAURANT_ENDPOINT = import.meta.env.VITE_ADD_RESTAURANT_ENDPOINT;
 
 export function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRestaurantModalProps) {
-  const [restaurantDetails, setRestaurantDetails] = useState<RestaurantDetails>({
-    restaurantName: '',
-    restaurantEmail: '',
-    restaurantPhoneNumber: '',
-    restaurantAddress: '',
-    image: null
+  const [restaurantDetails, setRestaurantDetails] = useState<Partial<RestaurantDetails>>({
+    image: null,
+    restaurantName: "",
+    restaurantEmail: "",
+    restaurantPhoneNumber: "",
+    restaurantAddress: "",
   })
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [errors, setErrors] = useState<Partial<RestaurantDetails>>({})
@@ -184,9 +192,18 @@ export function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRestaurant
             <div className="space-y-2">
               <Label htmlFor="restaurantAddress">Location</Label>
               <LocationInput
-                label="Restaurant Location"
-                onLocationSelect={handleLocationSelect}
-                prefillData={null}
+                onLocationSelect={(location: LocationData) => {
+                  setRestaurantDetails((prev) => ({
+                    ...prev,
+                    restaurantAddress: location.address,
+                  }));
+                }}
+                prefillData={{
+                  address: restaurantDetails.restaurantAddress || "",
+                  city: "",
+                  longitude: 0,
+                  latitude: 0,
+                }}
               />
               {errors.restaurantAddress && <p className="text-sm text-red-500">{errors.restaurantAddress}</p>}
             </div>

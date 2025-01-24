@@ -178,28 +178,28 @@ export function EditUserModal({
     e.preventDefault()
     setIsSubmitting(true)
 
+    const formDataToSend = new FormData()
+      
+    formDataToSend.append('userId', user.id)
+      
+    formDataToSend.append('userName', userDetails.userName || "")
+    formDataToSend.append('fullName', userDetails.fullName || "")
+    formDataToSend.append('email', userDetails.email || "")
+    formDataToSend.append('role', userDetails.role || "")
+    formDataToSend.append('dateOfBirth', userDetails.dateOfBirth || "")
+    formDataToSend.append('phoneNumber', userDetails.phoneNumber || "")
+    formDataToSend.append('address', userDetails.address || "")
+    formDataToSend.append('city', userDetails.city || "")
+    formDataToSend.append('country', userDetails.country || "")
+    formDataToSend.append('postalCode', userDetails.postalCode || "")
+    formDataToSend.append('branchId', userDetails.branchId || "")
+    formDataToSend.append('restaurantId', user.restaurantId || "")
+
+    if (selectedFile) {
+      formDataToSend.append('photo', selectedFile)
+    }
+
     try {
-      const formDataToSend = new FormData()
-      
-      formDataToSend.append('userId', user.id)
-      
-      formDataToSend.append('userName', userDetails.userName)
-      formDataToSend.append('fullName', userDetails.fullName)
-      formDataToSend.append('email', userDetails.email)
-      formDataToSend.append('role', userDetails.role)
-      formDataToSend.append('dateOfBirth', userDetails.dateOfBirth)
-      formDataToSend.append('phoneNumber', userDetails.phoneNumber)
-      formDataToSend.append('address', userDetails.address)
-      formDataToSend.append('city', userDetails.city)
-      formDataToSend.append('country', userDetails.country)
-      formDataToSend.append('postalCode', userDetails.postalCode)
-      formDataToSend.append('branchId', userDetails.branchId)
-      formDataToSend.append('restaurantId', user.restaurantId)
-
-      if (selectedFile) {
-        formDataToSend.append('photo', selectedFile)
-      }
-
       const response = await fetch(
         `https://api-server.krontiva.africa/api:uEBBwbSs/delikaquickshipper_user_table/${user.id}`,
         {
