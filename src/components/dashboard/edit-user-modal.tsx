@@ -47,7 +47,6 @@ interface EditUserModalProps {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const GET_USERS_ENDPOINT = import.meta.env.VITE_GET_USERS_ENDPOINT;
-const DELETE_USER_ENDPOINT = import.meta.env.VITE_DELETE_USER_ENDPOINT;
 
 export function EditUserModal({
   isOpen,
@@ -74,7 +73,6 @@ export function EditUserModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [roles, setRoles] = useState<string[]>([])
   const [isLoadingRoles, setIsLoadingRoles] = useState(true)
-  const [isLoading, setIsLoading] = useState(true)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   useEffect(() => {
@@ -131,7 +129,6 @@ export function EditUserModal({
       if (!user?.id) return
 
       try {
-        setIsLoading(true)
         const response = await fetch(
           `https://api-server.krontiva.africa/api:uEBBwbSs/delikaquickshipper_user_table/${user.id}`,
           {
@@ -161,11 +158,9 @@ export function EditUserModal({
           restaurantId: userData.restaurantId,
           image: userData.image
         })
-        setIsLoading(false)
       } catch (error) {
         console.error('Error fetching user details:', error)
         toast.error('Failed to load user details')
-        setIsLoading(false)
       }
     }
 

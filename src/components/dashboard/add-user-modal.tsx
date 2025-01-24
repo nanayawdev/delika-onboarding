@@ -94,8 +94,13 @@ export function AddUserModal({ isOpen, onClose, onSuccess, restaurantId, branche
 
         const users = await response.json()
         
-        // Extract unique roles from users
-        const uniqueRoles = [...new Set(users.map((user: any) => user.role))]
+        // Extract unique roles from users and ensure they are strings
+        const uniqueRoles = Array.from(new Set(users
+          .map((user: { role?: unknown }) => user.role)
+          .filter((role: unknown): role is string => 
+            typeof role === 'string' && role.trim() !== ''
+          )
+        )) as string[]
         console.log('Fetched roles:', uniqueRoles)
         setRoles(uniqueRoles)
       } catch (error) {
