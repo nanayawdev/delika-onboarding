@@ -284,7 +284,7 @@ export default function RestaurantDetail() {
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null)
   const [isCourierModalOpen, setIsCourierModalOpen] = useState(false)
   const [allUsers, setAllUsers] = useState<User[]>([])
-  const [currentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(1)
   const ordersPerPage = 10
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined
