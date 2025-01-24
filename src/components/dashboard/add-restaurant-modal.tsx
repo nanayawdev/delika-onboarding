@@ -50,7 +50,7 @@ export function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRestaurant
     
     if (type === 'file' && files && files[0]) {
       const file = files[0]
-      setRestaurantDetails(prev => ({ ...prev, image: file }))
+      setRestaurantDetails((prev) => ({ ...prev, image: file as File | null })); 
       const previewUrl = URL.createObjectURL(file)
       setImagePreview(previewUrl)
       if (errors.image) {
