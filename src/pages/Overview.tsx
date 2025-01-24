@@ -105,6 +105,14 @@ interface MenuType {
   restaurantName?: string;
 }
 
+interface RestaurantStats {
+  id: string;
+  name: string;
+  totalOrders: number;
+  totalRevenue: number;
+  menuItems: MenuType[];
+}
+
 export default function Overview() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
@@ -219,85 +227,67 @@ export default function Overview() {
   }, [orders, selectedMonth]);
 
   const restaurantMetrics = useMemo(() => {
-    const totalRestaurants = restaurants.length;
-    
-    const [year, month] = selectedOverviewMonth.split('-');
+    const filteredOrders = filterOrdersByMonth(orders, selectedMonth);
+    const restaurantStats = filteredOrders.reduce((acc: { [key: string]: RestaurantStats }, order) => {
+      const restaurantId = order.restaurantId;
+      if (!acc[restaurantId]) {
+        const restaurant = restaurants.find(r => r.id === restaurantId);
+        if (restaurant) {
+          acc[restaurantId] = {
+            id: restaurantId,
+            name: restaurant.name,
+            totalOrders: 0,
+            totalRevenue: 0,
+            menuItems: menuItems.filter(item => item.restaurantId === restaurantId)
+          };
+        }
+      }
+      if (acc[restaurantId]) {
+        acc[restaurantId].totalOrders++;
+        acc[restaurantId].totalRevenue += parseFloat(order.totalPrice?.toString() || '0');
+      }
+      return acc;
+    }, {});
+
+    return Object.values(restaurantStats)
+      .map(stats => ({
+        ...stats,
+        hasMenu: stats.menuItems.length > 0
+      }))
+      .sort((a, b) => b.totalRevenue - a.totalRevenue);
+  }, [orders, selectedMonth, restaurants, menuItems]);
+
+  const recentSalesByRestaurant = useMemo(() => {
+    const [year, month] = selectedRewardsMonth.split('-');
     const filteredOrders = orders.filter(order => {
       const orderDate = new Date(order.orderDate);
       return orderDate.getFullYear() === parseInt(year) && 
              orderDate.getMonth() === parseInt(month) - 1;
     });
-    
-    const restaurantOrders = filteredOrders.reduce((acc: { [key: string]: number }, order) => {
-      const restaurantId = order.restaurantId;
-      acc[restaurantId] = (acc[restaurantId] || 0) + 1;
-      return acc;
-    }, {});
 
-    const mostActiveRestaurant = Object.entries(restaurantOrders)
-      .sort(([, a], [, b]) => b - a)[0];
-
-    const mostActiveRestaurantName = mostActiveRestaurant
-      ? restaurants.find(r => r.id === mostActiveRestaurant[0])?.restaurantName
-      : 'N/A';
-
-    const restaurantRevenue = filteredOrders.reduce((acc: { [key: string]: number }, order) => {
-      const restaurantId = order.restaurantId;
-      acc[restaurantId] = (acc[restaurantId] || 0) + (Number(order.totalPrice) || 0);
-      return acc;
-    }, {});
-
-    const highestRevenue = Object.entries(restaurantRevenue)
-      .sort(([, a], [, b]) => b - a)[0];
-
-    const highestRevenueRestaurantName = highestRevenue
-      ? restaurants.find(r => r.id === highestRevenue[0])?.restaurantName
-      : 'N/A';
-
-    return {
-      totalRestaurants,
-      mostActiveRestaurant: {
-        name: mostActiveRestaurantName,
-        orders: mostActiveRestaurant ? mostActiveRestaurant[1] : 0
-      },
-      highestRevenue: {
-        name: highestRevenueRestaurantName,
-        amount: highestRevenue ? highestRevenue[1] : 0
-      },
-      averageOrdersPerRestaurant: totalRestaurants 
-        ? (filteredOrders.length / totalRestaurants).toFixed(1) 
-        : 0
-    };
-  }, [restaurants, orders, selectedOverviewMonth]);
-
-  const recentSalesByRestaurant = useMemo(() => {
-    const [year, month] = selectedMonth.split('-');
-    const filteredOrders = orders.filter(order => {
-      const orderDate = new Date(order.orderDate);
-      const monthMatch = orderDate.getFullYear() === parseInt(year) && 
-                        orderDate.getMonth() === parseInt(month) - 1;
+    const restaurantSales = restaurants.reduce((acc: { [key: string]: any }, restaurant) => {
+      const restaurantId = restaurant.id;
+      const restaurantOrders = filteredOrders.filter(order => order.restaurantId === restaurantId);
       
-      const restaurantMatch = selectedRecentSalesRestaurant === 'all' || 
-                            order.restaurantId === selectedRecentSalesRestaurant;
-      
-      return monthMatch && restaurantMatch;
-    });
-    
-    return filteredOrders.reduce((acc: { [key: string]: any[] }, order) => {
-      const restaurantName = order.restaurantName;
-      if (!acc[restaurantName]) {
-        acc[restaurantName] = [];
+      if (restaurantOrders.length > 0) {
+        acc[restaurantId] = {
+          name: restaurant.name,
+          orders: restaurantOrders.length,
+          revenue: restaurantOrders.reduce((sum, order) => sum + (Number(order.totalPrice) || 0), 0),
+          menuItems: menuItems.filter(item => item.restaurantId === restaurantId)
+        };
       }
-      acc[restaurantName].push({
-        customer: order.customerName,
-        amount: Number(order.totalPrice) || 0,
-        date: new Date(order.orderDate),
-        status: order.orderStatus,
-        items: order.products.map(p => `${p.quantity}x ${p.name}`).join(', ')
-      });
+      
       return acc;
     }, {});
-  }, [orders, selectedMonth, selectedRecentSalesRestaurant]);
+
+    return Object.values(restaurantSales)
+      .map(stats => ({
+        ...stats,
+        hasMenu: stats.menuItems.length > 0
+      }))
+      .sort((a: any, b: any) => b.revenue - a.revenue);
+  }, [orders, selectedRewardsMonth, restaurants, menuItems]);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -652,12 +642,10 @@ export default function Overview() {
     const fetchAllMenuItems = async () => {
       try {
         setIsLoadingMenu(true);
-        setMenuError(null);
-
+        const userId = localStorage.getItem('delikaOnboardingId');
         const response = await fetch(
-          `${API_BASE_URL}${GET_ALL_MENU_ENDPOINT}`,
+          `${API_BASE_URL}${GET_ALL_MENU_ENDPOINT}?filter[delika_onboarding_id][eq]=${userId}`,
           {
-            method: 'GET',
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
               'Accept': 'application/json',
@@ -677,7 +665,7 @@ export default function Overview() {
         const validMenuItems = menuData
           .filter((item: MenuType) => 
             item.foodType && item.foodType.trim() !== '' && 
-            item.foods && item.foods.length > 0
+            item.name && item.name.trim() !== ''
           )
           .map((item: MenuType) => ({
             ...item,
@@ -708,28 +696,29 @@ export default function Overview() {
     return ['all', ...Array.from(types)];
   }, [menuItems]);
 
-  const filteredMenuItems = useMemo(() => {
-    return menuItems
-      .filter(item => {
-        const matchesSearch = menuSearchQuery === '' || 
-          item.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
-          item.description.toLowerCase().includes(menuSearchQuery.toLowerCase());
-        
-        const matchesType = selectedFoodType === 'all' || item.foodType === selectedFoodType;
-        
-        return matchesSearch && matchesType;
-      });
-  }, [menuItems, menuSearchQuery, selectedFoodType]);
-
-  const paginatedMenuItems = useMemo(() => {
+  const filteredAndPaginatedMenuItems = useMemo(() => {
+    let items = menuItems;
+    
+    if (selectedFoodType !== 'all') {
+      items = items.filter(item => item.foodType === selectedFoodType);
+    }
+    
+    if (menuSearchQuery) {
+      items = items.filter(item => 
+        item.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
+        item.description.toLowerCase().includes(menuSearchQuery.toLowerCase())
+      );
+    }
+    
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
+    
     return {
-      items: filteredMenuItems.slice(startIndex, endIndex),
-      totalItems: filteredMenuItems.length,
-      totalPages: Math.ceil(filteredMenuItems.length / itemsPerPage)
+      items: items.slice(startIndex, endIndex),
+      totalItems: items.length,
+      totalPages: Math.ceil(items.length / itemsPerPage)
     };
-  }, [filteredMenuItems, currentPage, itemsPerPage]);
+  }, [menuItems, selectedFoodType, menuSearchQuery, currentPage, itemsPerPage]);
 
   const paginatedRecentSales = useMemo(() => {
     const allSales = Object.values(recentSalesByRestaurant).flat().sort((a, b) => 
@@ -870,10 +859,6 @@ export default function Overview() {
       totalRevenue: totalSpent
     };
   }, [orders, selectedRewardsMonth, restaurants]);
-
-  const handlePageChange = (newPage: number) => {
-    setCustomersPage(newPage);
-  };
 
   const renderCustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: any[]; label?: string }) => {
     if (active && payload && payload.length) {
@@ -1048,7 +1033,7 @@ export default function Overview() {
               </CardHeader>
               <CardContent>
                 <div className="flex justify-between items-center">
-                  <p className="text-2xl font-bold">{restaurantMetrics.totalRestaurants}</p>
+                  <p className="text-2xl font-bold">{restaurantMetrics.length}</p>
                   <Building2 className="h-6 w-6 text-white/80" />
                 </div>
                 <p className="text-sm text-white/80">Active restaurants</p>
@@ -1063,10 +1048,10 @@ export default function Overview() {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-2xl font-bold truncate max-w-[180px]">
-                      {restaurantMetrics.mostActiveRestaurant.name}
+                      {restaurantMetrics[0].name}
                     </p>
                     <p className="text-sm text-white/80">
-                      {restaurantMetrics.mostActiveRestaurant.orders} orders
+                      {restaurantMetrics[0].totalOrders} orders
                     </p>
                   </div>
                   <TrendingUp className="h-6 w-6 text-white/80" />
@@ -1082,10 +1067,10 @@ export default function Overview() {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-2xl font-bold truncate max-w-[180px]">
-                      {restaurantMetrics.highestRevenue.name}
+                      {restaurantMetrics[0].name}
                     </p>
                     <p className="text-sm text-white/80">
-                      GH₵{restaurantMetrics.highestRevenue.amount.toFixed(2)}
+                      GH₵{restaurantMetrics[0].totalRevenue.toFixed(2)}
                     </p>
                   </div>
                   <DollarSign className="h-6 w-6 text-white/80" />
@@ -1101,7 +1086,7 @@ export default function Overview() {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-2xl font-bold">
-                      {restaurantMetrics.averageOrdersPerRestaurant}
+                      {restaurantMetrics[0].totalOrders}
                     </p>
                     <p className="text-sm text-white/80">Orders per restaurant</p>
                   </div>
@@ -1228,7 +1213,7 @@ export default function Overview() {
                     ))}
                   </tbody>
                 </table>
-                {Object.keys(recentSalesByRestaurant).length === 0 ? (
+                {restaurantMetrics.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     No sales data available
                   </div>
@@ -1438,14 +1423,14 @@ export default function Overview() {
               <div className="text-center py-8">
                 <p className="text-red-500">{menuError}</p>
               </div>
-            ) : paginatedMenuItems.items.length === 0 ? (
+            ) : filteredAndPaginatedMenuItems.items.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-500">No menu items found</p>
               </div>
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  {paginatedMenuItems.items.map((item) => (
+                  {filteredAndPaginatedMenuItems.items.map((item) => (
                     <Card key={`${item.name}-${item.restaurantName}`} className="border overflow-hidden hover:shadow-lg transition-shadow bg-white">
                       {item.foodImage && (
                         <div className="relative h-48 w-full">
@@ -1472,7 +1457,7 @@ export default function Overview() {
                 
                 <div className="flex justify-between items-center mt-6">
                   <p className="text-sm text-gray-500">
-                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, paginatedMenuItems.totalItems)} of {paginatedMenuItems.totalItems} items
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndPaginatedMenuItems.totalItems)} of {filteredAndPaginatedMenuItems.totalItems} items
                   </p>
                   <div className="flex gap-2">
                     <Button
@@ -1486,8 +1471,8 @@ export default function Overview() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(paginatedMenuItems.totalPages, prev + 1))}
-                      disabled={currentPage === paginatedMenuItems.totalPages}
+                      onClick={() => setCurrentPage(prev => Math.min(filteredAndPaginatedMenuItems.totalPages, prev + 1))}
+                      disabled={currentPage === filteredAndPaginatedMenuItems.totalPages}
                     >
                       Next
                     </Button>
