@@ -41,7 +41,7 @@ import {
   CalendarIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
-import type { Restaurant, Branch, Courier, OrderProgress, Order, User, MenuType, Food } from '@/types';
+import type { Restaurant, Branch, Courier, OrderProgress, Order, User, MenuType } from '@/types';
 import { API_BASE_URL } from '@/config';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { ErrorState } from '@/components/ui/error-state';
