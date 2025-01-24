@@ -20,8 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-
+  
 // Icons and other imports
 import {
   ArrowLeft,
@@ -42,9 +41,9 @@ import {
   CalendarIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
-import type { Restaurant, Branch, Courier, OrderProgress, Order, User, MenuType, Food, OrderProduct } from '../../types';
-import { API_BASE_URL } from '../../config';
-import { formatCurrency } from '../../utils/format';
+import type { Restaurant, Branch, Courier, OrderProgress, Order, User, MenuType, Food, OrderProduct } from '@/types';
+import { API_BASE_URL } from '@/config';
+import { formatCurrency } from '@/utils/format';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { ErrorState } from '@/components/ui/error-state';
 import { EditRestaurantModal } from './edit-restaurant-modal';
