@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BroadcastModal } from '@/components/dashboard/BroadcastModal'; // Adjust the import based on your project structure
+import { BroadcastModal } from '@/components/dashboard/BroadcastModal';
 import { Trash2 } from "lucide-react"
 import { DeleteWarningModal } from '@/components/dashboard/delete-warning-modal'
 import { toast } from 'sonner';
@@ -23,13 +23,6 @@ interface Broadcast {
   ExpiryDate?: string;
   Image?: { url: string };
   restaurants?: { restaurantId: string }[];
-}
-
-interface BroadcastModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-  restaurants: Record<string, string>;
 }
 
 const BroadcastList: React.FC = () => {
