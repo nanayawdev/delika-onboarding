@@ -1,27 +1,75 @@
 'use client'
 
-import { useMemo } from 'react';
-import { useState, useEffect } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, Building2, TrendingUp, Building, RefreshCcw, UsersIcon, MoreHorizontal, Pencil, Trash2, User, Search } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { EditRestaurantModal } from './edit-restaurant-modal'
-import { AddBranchModal } from './add-branch-modal'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
-import { ErrorState } from "@/components/ui/error-state"
-import { AddUserModal } from './add-user-modal'
+import React, { useEffect, useState, useMemo } from 'react';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import Papa from 'papaparse';
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CircularProgress,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Divider,
+  Grid,
+  IconButton,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TablePagination,
+  TableRow,
+  TextField,
+  Typography,
+} from '@/components/ui';
+import {
+  ArrowLeft,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Building2,
+  TrendingUp,
+  Building,
+  RefreshCcw,
+  UsersIcon,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  User,
+  Search,
+  CalendarIcon
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { Restaurant, Branch, Courier, OrderProgress, Order, User as UserType, MenuType, PaginatedOrders } from '../../types';
+import { API_BASE_URL } from '../../config';
+import { formatCurrency } from '../../utils/format';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { ErrorState } from '@/components/ui/error-state';
+import { EditRestaurantModal } from './edit-restaurant-modal';
+import { AddBranchModal } from './add-branch-modal';
+import { AddUserModal } from './add-user-modal';
+import { EditUserModal } from './edit-user-modal';
+import { DeleteWarningModal } from './delete-warning-modal';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as DatePicker } from '@/components/ui/calendar';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { DeleteWarningModal } from './delete-warning-modal'
-import { EditUserModal } from './edit-user-modal'
-import { toast } from "sonner"
 import { Sonner } from "@/components/ui/sonner"
 import {
   Select,
@@ -34,11 +82,6 @@ import { EditBranchModal } from './edit-branch-modal'
 import krontivaLogo from '/krontivalogo.png' // Adjust the path as necessary
 import PurseIcon from '@/assets/icons/purse-stroke-rounded'
 import { Input } from "@/components/ui/input"
-import Papa from 'papaparse'
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { format } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
-import { Calendar as DatePicker } from "@/components/ui/calendar"
 import {
   Carousel,
   CarouselContent,
@@ -181,21 +224,25 @@ interface User {
   };
 }
 
-interface PaginatedOrders {
-  orders: Order[];
-  totalPages: number;
-}
-
 const capitalizeFirstLetter = (string: string): string => {
   return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const GET_RESTAURANTS_ENDPOINT = import.meta.env.VITE_GET_RESTAURANTS_ENDPOINT;
 const GET_BRANCHES_ENDPOINT = import.meta.env.VITE_GET_BRANCHES_ENDPOINT;
 const GET_USERS_ENDPOINT = import.meta.env.VITE_GET_USERS_ENDPOINT;
 const GET_ORDERS_ENDPOINT = import.meta.env.VITE_GET_ORDERS_ENDPOINT;
 const GET_MENU_ENDPOINT = import.meta.env.VITE_GET_MENU_ENDPOINT;
+
+interface TableHeaderProps {
+  children: React.ReactNode;
+}
+
+const TableHeaderComponent = ({ children }: TableHeaderProps) => (
+  <TableHead>
+    <TableRow>{children}</TableRow>
+  </TableHead>
+);
 
 export default function RestaurantDetail() {
   const location = useLocation()
@@ -536,31 +583,34 @@ export default function RestaurantDetail() {
     }
   };
 
-  const exportToCSV = (data: Order[]) => {
-    const csvRows: string[] = [];
-    
-    // Get the headers
-    const headers = Object.keys(data[0]);
-    csvRows.push(headers.join(','));
+  const handleExport = () => {
+    const csvData = paginatedOrders.orders.map(order => ({
+      'Order Number': order.orderNumber,
+      'Customer Name': order.customerName,
+      'Customer Phone': order.customerPhoneNumber,
+      'Courier Name': order.courierName || 'Not assigned',
+      'Courier Phone': order.courierPhoneNumber || '-',
+      'Status': order.orderStatus,
+      'Products': order.products?.map(p => `${p.quantity}x ${p.name} (GH₵${p.price})`).join('; '),
+      'Pickup': order.pickupName,
+      'Dropoff': order.dropoffName,
+      'Distance (km)': Number(order.deliveryDistance).toFixed(1),
+      'Delivery Price (GH₵)': Number(order.deliveryPrice).toFixed(2),
+      'Total Price (GH₵)': Number(order.totalPrice).toFixed(2),
+      'Order Date': new Date(order.orderDate).toLocaleDateString(),
+      'Created At': new Date(order.created_at).toLocaleTimeString()
+    }));
 
-    // Format the data
-    for (const row of data) {
-      const values = headers.map(header => {
-        const escaped = ('' + row[header]).replace(/"/g, '\\"'); // Escape double quotes
-        return `"${escaped}"`; // Wrap in quotes
-      });
-      csvRows.push(values.join(','));
-    }
-
-    // Create a Blob and download it
-    const csvString = csvRows.join('\n');
-    const blob = new Blob([csvString], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
+    const csv = Papa.unparse(csvData);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.setAttribute('href', url);
-    a.setAttribute('download', 'orders.csv');
+    a.href = url;
+    a.download = `orders-${new Date().toISOString()}.csv`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url); // Clean up
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   };
 
   // Fetch orders from the API
@@ -598,37 +648,6 @@ export default function RestaurantDetail() {
   useEffect(() => {
     fetchOrders();
   }, []);
-
-  // Update the export function to use filtered data
-  const handleExport = () => {
-    const csvData = paginatedOrders.orders.map(order => ({
-      'Order Number': order.orderNumber,
-      'Customer Name': order.customerName,
-      'Customer Phone': order.customerPhoneNumber,
-      'Courier Name': order.courierName || 'Not assigned',
-      'Courier Phone': order.courierPhoneNumber || '-',
-      'Status': order.orderStatus,
-      'Products': order.products?.map(p => `${p.quantity}x ${p.name} (GH₵${p.price})`).join('; '),
-      'Pickup': order.pickupName,
-      'Dropoff': order.dropoffName,
-      'Distance (km)': Number(order.deliveryDistance).toFixed(1),
-      'Delivery Price (GH₵)': Number(order.deliveryPrice).toFixed(2),
-      'Total Price (GH₵)': Number(order.totalPrice).toFixed(2),
-      'Order Date': new Date(order.orderDate).toLocaleDateString(),
-      'Created At': new Date(order.created_at).toLocaleTimeString()
-    }))
-
-    const csv = Papa.unparse(csvData)
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `orders-${new Date().toISOString()}.csv`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    window.URL.revokeObjectURL(url)
-  }
 
   const fetchAllUsers = async () => {
     try {
@@ -717,9 +736,9 @@ export default function RestaurantDetail() {
   };
 
   // Add pagination handler
-  const handlePageChange = (page: number) => {
-    setCurrentSlide(page - 1)
-  }
+  const handlePageChange = (e: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
+    setCurrentPage(newPage);
+  };
 
   const currentSlideItems = useMemo(() => {
     const startIndex = currentSlide * itemsPerSlide;
@@ -1170,6 +1189,12 @@ export default function RestaurantDetail() {
                                 loop: true,
                               }}
                               className="w-full"
+                              setApi={(api) => {
+                                api?.on("select", () => {
+                                  const currentSlide = api.selectedScrollSnap();
+                                  setCurrentSlide(currentSlide);
+                                });
+                              }}
                             >
                               <CarouselContent className="-ml-2 md:-ml-4">
                                 {currentSlideItems.map((menuType, index) => (
@@ -1195,8 +1220,6 @@ export default function RestaurantDetail() {
                                   </CarouselItem>
                                 ))}
                               </CarouselContent>
-                              <CarouselPrevious className="absolute -left-4 top-1/2 transform -translate-y-1/2 bg-white border-gray-200 hover:bg-gray-100 shadow-md" />
-                              <CarouselNext className="absolute -right-4 top-1/2 transform -translate-y-1/2 bg-white border-gray-200 hover:bg-gray-100 shadow-md" />
                             </Carousel>
                           </div>
                         </div>
