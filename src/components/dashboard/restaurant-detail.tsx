@@ -27,7 +27,6 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TableHeader,
   TablePagination,
   TableRow,
   TextField,
@@ -52,7 +51,7 @@ import {
   CalendarIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { Restaurant, Branch, Courier, OrderProgress, Order, User as UserType, MenuType, PaginatedOrders } from '../../types';
+import { Restaurant, Branch, Courier, OrderProgress, Order, User as UserType, MenuType } from '../../types';
 import { API_BASE_URL } from '../../config';
 import { formatCurrency } from '../../utils/format';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -79,15 +78,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { EditBranchModal } from './edit-branch-modal'
-import krontivaLogo from '/krontivalogo.png' // Adjust the path as necessary
+import krontivaLogo from '/krontivalogo.png'
 import PurseIcon from '@/assets/icons/purse-stroke-rounded'
 import { Input } from "@/components/ui/input"
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from "@/components/ui/carousel"
 
 interface Restaurant {
@@ -233,16 +230,6 @@ const GET_BRANCHES_ENDPOINT = import.meta.env.VITE_GET_BRANCHES_ENDPOINT;
 const GET_USERS_ENDPOINT = import.meta.env.VITE_GET_USERS_ENDPOINT;
 const GET_ORDERS_ENDPOINT = import.meta.env.VITE_GET_ORDERS_ENDPOINT;
 const GET_MENU_ENDPOINT = import.meta.env.VITE_GET_MENU_ENDPOINT;
-
-interface TableHeaderProps {
-  children: React.ReactNode;
-}
-
-const TableHeaderComponent = ({ children }: TableHeaderProps) => (
-  <TableHead>
-    <TableRow>{children}</TableRow>
-  </TableHead>
-);
 
 export default function RestaurantDetail() {
   const location = useLocation()
@@ -735,9 +722,8 @@ export default function RestaurantDetail() {
     return statuses;
   };
 
-  // Add pagination handler
-  const handlePageChange = (e: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
-    setCurrentPage(newPage);
+  const handlePageChange = (_event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
+    setCurrentPage(newPage + 1);
   };
 
   const currentSlideItems = useMemo(() => {
@@ -802,6 +788,14 @@ export default function RestaurantDetail() {
   const handleCourierClick = (courier: Courier) => {
     setSelectedCourier(courier);
     setIsCourierModalOpen(true);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleMenuSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMenuSearchQuery(e.target.value);
   };
 
   if (!restaurant) {
@@ -1168,7 +1162,7 @@ export default function RestaurantDetail() {
                                 <Input
                                   placeholder="Search menu items..."
                                   value={menuSearchQuery}
-                                  onChange={(e) => setMenuSearchQuery(e.target.value)}
+                                  onChange={handleMenuSearchChange}
                                   className="pl-8 border-gray-200 bg-gray-50"
                                 />
                               </div>
@@ -1366,7 +1360,7 @@ export default function RestaurantDetail() {
                                     <Input
                                       placeholder="Search orders..."
                                       value={searchQuery}
-                                      onChange={(e) => setSearchQuery(e.target.value)}
+                                      onChange={handleSearchChange}
                                       className="max-w-sm"
                                     />
                                     
@@ -1508,18 +1502,16 @@ export default function RestaurantDetail() {
                                 <div className="mt-4">
                                   <h3 className="text-lg font-semibold mb-4">Orders</h3>
                                   <Table>
-                                    <TableHeader>
+                                    <TableHead>
                                       <TableRow>
                                         <TableHead>Order #</TableHead>
                                         <TableHead>Customer</TableHead>
-                                        <TableHead>Courier</TableHead>
                                         <TableHead>Status</TableHead>
-                                        <TableHead>Products</TableHead>
-                                        <TableHead>Delivery Details</TableHead>
+                                        <TableHead>Courier</TableHead>
                                         <TableHead>Total</TableHead>
                                         <TableHead>Date</TableHead>
                                       </TableRow>
-                                    </TableHeader>
+                                    </TableHead>
                                     <TableBody>
                                       {paginatedOrders.orders.map((order) => (
                                         <TableRow key={order.id}>
@@ -1530,12 +1522,6 @@ export default function RestaurantDetail() {
                                             <div className="space-y-1">
                                               <p className="font-medium">{order.customerName}</p>
                                               <p className="text-sm text-gray-500">{order.customerPhoneNumber}</p>
-                                            </div>
-                                          </TableCell>
-                                          <TableCell>
-                                            <div className="space-y-1">
-                                              <p className="font-medium">{order.courierName || 'Not assigned'}</p>
-                                              <p className="text-sm text-gray-500">{order.courierPhoneNumber || '-'}</p>
                                             </div>
                                           </TableCell>
                                           <TableCell>
@@ -1553,20 +1539,8 @@ export default function RestaurantDetail() {
                                           </TableCell>
                                           <TableCell>
                                             <div className="space-y-1">
-                                              {order.products?.map((product, index) => (
-                                                <div key={index} className="text-sm">
-                                                  {product.quantity}x {product.name} - GH₵{Number(product.price).toFixed(2)}
-                                                </div>
-                                              ))}
-                                            </div>
-                                          </TableCell>
-                                          <TableCell>
-                                            <div className="space-y-1">
-                                              <p className="text-sm">From: {order.pickupName}</p>
-                                              <p className="text-sm">To: {order.dropoffName}</p>
-                                              <p className="text-xs text-gray-500">
-                                                {Number(order.deliveryDistance).toFixed(1)}km • GH₵{Number(order.deliveryPrice).toFixed(2)}
-                                              </p>
+                                              <p className="font-medium">{order.courierName || 'Not assigned'}</p>
+                                              <p className="text-sm text-gray-500">{order.courierPhoneNumber || '-'}</p>
                                             </div>
                                           </TableCell>
                                           <TableCell className="font-medium">
