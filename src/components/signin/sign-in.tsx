@@ -211,7 +211,7 @@ export default function SignIn() {
         onSuccess={handleOTPSuccess}
         email={signInDetails.email}
       />
-      <Sonner position="top-right" />
+      <Sonner />
     </div>
   )
 } 

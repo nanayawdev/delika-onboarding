@@ -106,7 +106,7 @@ export function OTPVerificationModal({
           </div>
         </DialogContent>
       </Dialog>
-      <Sonner position="top-right" />
+      <Sonner />
     </>
   )
 } 

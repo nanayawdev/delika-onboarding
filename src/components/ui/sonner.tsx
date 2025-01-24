@@ -1,19 +1,19 @@
 "use client"
 
-import { Toaster } from "sonner"
+import { Toaster } from 'sonner';
 
 export function Sonner() {
   return (
-    <Toaster 
-      position="top-center"
+    <Toaster
+      className="toaster group"
       toastOptions={{
-        style: {
-          background: 'white',
-          border: '1px solid #E2E8F0',
-          borderRadius: '0.5rem',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        classNames: {
+          toast: 'group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg',
+          description: 'group-[.toast]:text-muted-foreground',
+          actionButton: 'group-[.toast]:bg-primary group-[.toast]:text-primary-foreground',
+          cancelButton: 'group-[.toast]:bg-muted group-[.toast]:text-muted-foreground',
         },
       }}
     />
-  )
+  );
 }
