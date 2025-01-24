@@ -39,44 +39,66 @@ const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddressChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const newAddress = e.target.value;
     setAddress(newAddress);
     
-    if (newAddress) {
-      if (prefillData?.city && prefillData.longitude && prefillData.latitude) {
-        onLocationSelect({
-          address: newAddress,
-          city: prefillData.city,
-          longitude: prefillData.longitude,
-          latitude: prefillData.latitude
-        });
+    if (newAddress.length > 2) {
+      try {
+        const response = await fetch(
+          `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(newAddress)}&apiKey=${import.meta.env.VITE_GEOAPIFY_API_KEY}`
+        );
+        const data = await response.json();
+        setSuggestions(data.features || []);
+        setShowSuggestions(true);
+      } catch (error) {
+        console.error('Error fetching location suggestions:', error);
+        setSuggestions([]);
       }
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+    
+    if (newAddress && prefillData?.city && prefillData.longitude && prefillData.latitude) {
+      onLocationSelect({
+        address: newAddress,
+        city: prefillData.city,
+        longitude: prefillData.longitude,
+        latitude: prefillData.latitude
+      });
     }
   };
 
   return (
-    <div ref={wrapperRef}>
-      <label>{label}</label>
+    <div ref={wrapperRef} className="relative w-full">
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
       <input
         type="text"
         value={address}
         onChange={handleAddressChange}
         disabled={disabled}
+        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+        placeholder="Enter location"
       />
       {showSuggestions && suggestions.length > 0 && (
-        <ul>
+        <ul className="absolute z-10 w-full mt-1 bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
           {suggestions.map((suggestion) => (
-            <li key={suggestion.properties.formatted} onClick={() => {
-              setAddress(suggestion.properties.formatted);
-              const city = suggestion.properties.city || 'Unknown City';
-              onLocationSelect({
-                address: suggestion.properties.formatted,
-                city: city,
-                longitude: suggestion.properties.lon,
-                latitude: suggestion.properties.lat,
-              });
-            }}>
+            <li
+              key={suggestion.properties.formatted}
+              onClick={() => {
+                setAddress(suggestion.properties.formatted);
+                const city = suggestion.properties.city || 'Unknown City';
+                onLocationSelect({
+                  address: suggestion.properties.formatted,
+                  city: city,
+                  longitude: suggestion.properties.lon,
+                  latitude: suggestion.properties.lat,
+                });
+                setShowSuggestions(false);
+              }}
+              className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-50"
+            >
               {suggestion.properties.formatted}
             </li>
           ))}

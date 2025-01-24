@@ -14,7 +14,15 @@ interface RestaurantDetails {
   restaurantEmail: string
   restaurantPhoneNumber: string
   restaurantAddress: string
-  image?: File
+  image: File | null
+}
+
+interface RestaurantErrors {
+  restaurantName?: string
+  restaurantEmail?: string
+  restaurantPhoneNumber?: string
+  restaurantAddress?: string
+  image?: string
 }
 
 export default function RestaurantOnboarding() {
@@ -23,62 +31,53 @@ export default function RestaurantOnboarding() {
     restaurantEmail: '',
     restaurantPhoneNumber: '',
     restaurantAddress: '',
+    image: null
   })
 
   const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [errors, setErrors] = useState<Partial<RestaurantDetails>>({})
+  const [errors, setErrors] = useState<RestaurantErrors>({})
   const navigate = useNavigate()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, files } = e.target
     
     if (type === 'file' && files && files[0]) {
-      // Handle image upload
       const file = files[0]
       setRestaurantDetails(prev => ({ ...prev, image: file }))
-      
-      // Create preview URL
       const previewUrl = URL.createObjectURL(file)
       setImagePreview(previewUrl)
-      
-      // Clear error when user uploads an image
       if (errors.image) {
-        setErrors(prev => ({ ...prev, image: '' }))
+        setErrors(prev => ({ ...prev, image: undefined }))
       }
     } else {
-      // Handle other inputs
       setRestaurantDetails(prev => ({ ...prev, [name]: value }))
-      // Clear error when user starts typing
-      if (errors[name as keyof RestaurantDetails]) {
-        setErrors(prev => ({ ...prev, [name]: '' }))
+      if (errors[name as keyof RestaurantErrors]) {
+        setErrors(prev => ({ ...prev, [name]: undefined }))
       }
     }
   }
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<RestaurantDetails> = {}
+    const newErrors: RestaurantErrors = {}
     let isValid = true
 
     Object.entries(restaurantDetails).forEach(([key, value]) => {
       if (key !== 'image' && !value?.trim()) {
-        newErrors[key as keyof RestaurantDetails] = 'This field is required'
+        newErrors[key as keyof RestaurantErrors] = 'This field is required'
         isValid = false
       }
     })
 
-    // Email validation
     if (restaurantDetails.restaurantEmail && !/\S+@\S+\.\S+/.test(restaurantDetails.restaurantEmail)) {
       newErrors.restaurantEmail = 'Please enter a valid email'
       isValid = false
     }
 
-    // Phone number validation
     if (restaurantDetails.restaurantPhoneNumber && !/^\+?[\d\s-]{10,}$/.test(restaurantDetails.restaurantPhoneNumber)) {
       newErrors.restaurantPhoneNumber = 'Please enter a valid phone number'
       isValid = false
     }
 
-    // Image validation
     if (!restaurantDetails.image) {
       newErrors.image = 'Restaurant image is required'
       isValid = false
@@ -92,19 +91,16 @@ export default function RestaurantOnboarding() {
     e.preventDefault()
     if (validateForm()) {
       try {
-        // First, create FormData for the restaurant record with image
         const formData = new FormData()
         formData.append('restaurantName', restaurantDetails.restaurantName)
         formData.append('restaurantEmail', restaurantDetails.restaurantEmail)
         formData.append('restaurantPhoneNumber', restaurantDetails.restaurantPhoneNumber)
         formData.append('restaurantAddress', restaurantDetails.restaurantAddress)
         
-        // Append the image with 'image' field name
         if (restaurantDetails.image) {
           formData.append('image', restaurantDetails.image)
         }
 
-        // Create the restaurant record
         const response = await fetch('https://api-server.krontiva.africa/api:uEBBwbSs/delikaquickshipper_restaurants_table', {
           method: 'POST',
           headers: {
