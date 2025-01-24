@@ -11,10 +11,16 @@ interface Restaurant {
 interface BroadcastModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void; // Adjusted to not require a message
+  onSuccess: () => void;
+  restaurants: Record<string, string>;
 }
 
-export const BroadcastModal: React.FC<BroadcastModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const BroadcastModal: React.FC<BroadcastModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSuccess,
+  restaurants: externalRestaurants 
+}) => {
   const [header, setHeader] = useState('');
   const [body, setBody] = useState('');
   const [footer, setFooter] = useState('');
@@ -24,6 +30,17 @@ export const BroadcastModal: React.FC<BroadcastModalProps> = ({ isOpen, onClose,
   const [selectedRestaurants, setSelectedRestaurants] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Use external restaurants if provided
+  useEffect(() => {
+    if (externalRestaurants) {
+      const formattedRestaurants = Object.entries(externalRestaurants).map(([id, restaurantName]) => ({
+        id,
+        restaurantName
+      }));
+      setRestaurants(formattedRestaurants);
+    }
+  }, [externalRestaurants]);
 
   // Filter restaurants based on search query
   const filteredRestaurants = restaurants.filter(restaurant => 
@@ -44,25 +61,6 @@ export const BroadcastModal: React.FC<BroadcastModalProps> = ({ isOpen, onClose,
       // Select all filtered restaurants
       const filteredIds = filteredRestaurants.map(r => r.id);
       setSelectedRestaurants(prev => [...new Set([...prev, ...filteredIds])]);
-    }
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchRestaurants(); // Fetch restaurants when the modal opens
-    }
-  }, [isOpen]);
-
-  const fetchRestaurants = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/delikaquickshipper_restaurants_table`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch restaurants');
-      }
-      const data = await response.json();
-      setRestaurants(data);
-    } catch (error) {
-      console.error('Error fetching restaurants:', error);
     }
   };
 

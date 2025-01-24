@@ -25,6 +25,13 @@ interface Broadcast {
   restaurants?: { restaurantId: string }[];
 }
 
+interface BroadcastModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  restaurants: Record<string, string>;
+}
+
 const BroadcastList: React.FC = () => {
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [restaurants, setRestaurants] = useState<{ [key: string]: string }>({}); // Mapping of restaurantId to restaurant name
@@ -74,8 +81,10 @@ const BroadcastList: React.FC = () => {
     fetchBroadcasts(); // Fetch broadcasts
   }, []);
 
-  const handleBroadcastSuccess = (message: string) => { 
-    fetchBroadcasts(); // Refresh the list after a new broadcast is created
+  const handleSuccess = () => {
+    // Refresh the broadcast list
+    fetchBroadcasts();
+    toast.success('Broadcast sent successfully');
   };
 
   const handleDeleteBroadcast = async () => {
@@ -165,7 +174,7 @@ const BroadcastList: React.FC = () => {
       <BroadcastModal 
         isOpen={isBroadcastModalOpen}
         onClose={() => setIsBroadcastModalOpen(false)}
-        onSuccess={handleBroadcastSuccess}
+        onSuccess={handleSuccess}
         restaurants={restaurants}
       />
 
