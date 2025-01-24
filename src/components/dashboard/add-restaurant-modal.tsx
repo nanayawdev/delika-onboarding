@@ -163,13 +163,6 @@ export function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRestaurant
     }
   }
 
-  const handleLocationSelect = (location: LocationData) => {
-    setRestaurantDetails(prev => ({
-      ...prev,
-      restaurantAddress: location.address
-    }));
-  };
-
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>

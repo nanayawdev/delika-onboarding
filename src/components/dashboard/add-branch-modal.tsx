@@ -125,7 +125,12 @@ export function AddBranchModal({ restaurantId, isOpen, onClose, onSuccess }: Add
               <LocationInput
                 label="Branch Location"
                 onLocationSelect={handleLocationSelect}
-                prefillData={null}
+                prefillData={{
+                  address: '',
+                  city: '',
+                  longitude: 0,
+                  latitude: 0
+                }}
               />
             </div>
 
