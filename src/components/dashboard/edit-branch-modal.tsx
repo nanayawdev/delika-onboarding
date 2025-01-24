@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { toast } from "sonner"
 import LocationInput from "@/components/ui/LocationInput"
-import { LocationData } from '../types/location'
+import { LocationData } from '@/types/location'; // Ensure this type is defined
 
 interface Branch {
   id: string

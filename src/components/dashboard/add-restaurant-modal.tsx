@@ -21,7 +21,7 @@ interface RestaurantDetails {
   restaurantEmail: string
   restaurantPhoneNumber: string
   restaurantAddress: string
-  image?: File
+  image: File | null
 }
 
 interface AddRestaurantModalProps {
@@ -39,6 +39,7 @@ export function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRestaurant
     restaurantEmail: '',
     restaurantPhoneNumber: '',
     restaurantAddress: '',
+    image: null
   })
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [errors, setErrors] = useState<Partial<RestaurantDetails>>({})

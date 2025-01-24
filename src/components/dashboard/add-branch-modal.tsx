@@ -12,12 +12,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Sonner } from "@/components/ui/sonner"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { toast } from "sonner"
 import LocationInput from "@/components/ui/LocationInput";
-import { LocationData } from '../types/location'; // Ensure this type is defined
+import { LocationData } from '../../types/location'; // Fix module import for location types
 
 interface AddBranchModalProps {
+  restaurantId: string; // Add this property to AddBranchModalProps
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void

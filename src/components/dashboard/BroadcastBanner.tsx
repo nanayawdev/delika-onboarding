@@ -50,7 +50,7 @@ export const BroadcastBanner: React.FC<BroadcastBannerProps> = ({ restaurantId }
   }, [restaurantId]);
 
   // Check if the banner should be displayed based on the expiry date
-  const isExpired = expiryDate ? new Date(expiryDate).setHours(23, 59, 59, 999) < new Date() : false;
+  const isExpired = expiryDate ? new Date(expiryDate).getTime() < new Date().getTime() : false;
 
   if (!broadcastMessage || isExpired) return null; // Hide the banner if expired
 

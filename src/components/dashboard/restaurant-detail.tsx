@@ -198,7 +198,7 @@ export default function RestaurantDetail() {
   const [branchToEdit, setBranchToEdit] = useState<Branch | null>(null)
   const [isDeleteBranchModalOpen, setIsDeleteBranchModalOpen] = useState(false)
   const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null)
-  const [orders, setOrders] = useState<Order[]>([])
+  const [orders, setOrders] = useState<Order[]>([]) // Define orders with a proper type
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('All')
   const [selectedCourier, setSelectedCourier] = useState(null);

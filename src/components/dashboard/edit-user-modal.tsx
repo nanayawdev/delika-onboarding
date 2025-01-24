@@ -34,6 +34,7 @@ interface UserDetails {
   postalCode: string
   image?: File | null
   branchId?: string
+  restaurantId: string
 }
 
 interface EditUserModalProps {
@@ -68,8 +69,8 @@ export function EditUserModal({
     postalCode: user.postalCode || "",
     image: null,
     branchId: user.branchId || "",
+    restaurantId: user.restaurantId || "",
   })
-  const [errors, setErrors] = useState<Partial<UserDetails>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [roles, setRoles] = useState<string[]>([])
   const [isLoadingRoles, setIsLoadingRoles] = useState(true)

@@ -7,7 +7,7 @@ import RestaurantOnboarding from '@/components/restaurantonboarding/restaurant-o
 import { Navbar } from '@/components/layout/navbar'
 import DarkModeToggle from '@/components/DarkModeToggle'
 import BroadcastList from '@/pages/BroadcastList'
-import Overview from '@/pages/overview'
+import Overview from '@/pages/Overview';
 import ResetPassword from './pages/ResetPassword'
 
 function App() {

@@ -152,15 +152,12 @@ export default function Overview() {
   const [customersPage, setCustomersPage] = useState(1);
   const recentSalesPerPage = 10;
   const customersPerPage = 10;
-  // Add new state for rewards
   const [selectedRewardsMonth, setSelectedRewardsMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
 
-  // Calculate earnings data from orders with its own filter
   const earningsData = useMemo(() => {
-    // Filter orders by selected month
     const [year, month] = selectedOverviewMonth.split('-');
     const filteredOrders = orders.filter(order => {
       const orderDate = new Date(order.orderDate);
@@ -168,10 +165,8 @@ export default function Overview() {
              orderDate.getMonth() === parseInt(month) - 1;
     });
 
-    // Get the number of days in the selected month
     const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
 
-    // Create an array with all days of the month
     const dailyData = Array.from({ length: daysInMonth }, (_, index) => {
       const day = index + 1;
       const dayOrders = filteredOrders.filter(order => {
@@ -189,7 +184,6 @@ export default function Overview() {
     return dailyData;
   }, [orders, selectedOverviewMonth]);
 
-  // Mock active couriers data
   const activeCouriers = [
     { 
       id: 1, 
@@ -238,7 +232,6 @@ export default function Overview() {
     },
   ];
 
-  // Mock recent sales data grouped by restaurant
   const recentSales = {
     "Restaurant A": [
       { customer: "Olivia Martin", amount: 1999.00 },
@@ -253,7 +246,6 @@ export default function Overview() {
     ]
   };
 
-  // Add helper function for order progress
   const getOrderProgress = (orders: any[]) => {
     const statuses = {
       Assigned: false,
@@ -262,7 +254,6 @@ export default function Overview() {
       Delivered: false
     };
 
-    // Check the latest order status
     const latestOrder = orders[orders.length - 1];
     if (latestOrder) {
       switch (latestOrder.orderStatus) {
@@ -289,7 +280,6 @@ export default function Overview() {
     return statuses;
   };
 
-  // Function to filter orders by month
   const filterOrdersByMonth = (orders: Order[], monthStr: string) => {
     const [year, month] = monthStr.split('-').map(Number);
     return orders.filter(order => {
@@ -298,17 +288,14 @@ export default function Overview() {
     });
   };
 
-  // Calculate metrics for the selected month
   const monthlyMetrics = useMemo(() => {
     const filteredOrders = filterOrdersByMonth(orders, selectedMonth);
     
-    // Total delivery revenue
     const revenue = filteredOrders.reduce((acc, order) => {
       const deliveryPrice = parseFloat(order.deliveryPrice?.toString() || '0');
       return acc + (isNaN(deliveryPrice) ? 0 : deliveryPrice);
     }, 0);
 
-    // Best courier
     const courierStats = filteredOrders.reduce((acc: { [key: string]: CourierStats }, order) => {
       if (order.courierName) {
         if (!acc[order.courierName]) {
@@ -328,7 +315,6 @@ export default function Overview() {
       return (!best || current.totalRevenue > best.totalRevenue) ? current : best;
     }, null);
 
-    // Most distance
     const totalDistance = filteredOrders.reduce((acc, order) => {
       return acc + (parseFloat(order.deliveryDistance?.toString() || '0') || 0);
     }, 0);
@@ -340,7 +326,6 @@ export default function Overview() {
     };
   }, [orders, selectedMonth]);
 
-  // Fetch orders for revenue calculation
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -376,7 +361,6 @@ export default function Overview() {
     fetchOrders();
   }, []);
 
-  // Calculate total delivery revenue
   const totalDeliveryRevenue = useMemo(() => {
     return orders.reduce((acc, order) => {
       const deliveryPrice = parseFloat(order.deliveryPrice?.toString() || '0');
@@ -407,7 +391,6 @@ export default function Overview() {
         const data = await response.json();
         console.log('Orders data:', data);
         
-        // Group orders by courier
         const couriersList = data.reduce((acc: { [key: string]: Courier }, order: Order) => {
           if (order.courierName) {
             if (!acc[order.courierName]) {
@@ -455,11 +438,9 @@ export default function Overview() {
     );
   };
 
-  // Calculate restaurant metrics using the same filter as overview
   const restaurantMetrics = useMemo(() => {
     const totalRestaurants = restaurants.length;
     
-    // Filter orders by selected month
     const [year, month] = selectedOverviewMonth.split('-');
     const filteredOrders = orders.filter(order => {
       const orderDate = new Date(order.orderDate);
@@ -467,14 +448,12 @@ export default function Overview() {
              orderDate.getMonth() === parseInt(month) - 1;
     });
     
-    // Calculate orders per restaurant
     const restaurantOrders = filteredOrders.reduce((acc: { [key: string]: number }, order) => {
       const restaurantId = order.restaurantId;
       acc[restaurantId] = (acc[restaurantId] || 0) + 1;
       return acc;
     }, {});
 
-    // Find most active restaurant
     const mostActiveRestaurant = Object.entries(restaurantOrders)
       .sort(([, a], [, b]) => b - a)[0];
 
@@ -482,14 +461,12 @@ export default function Overview() {
       ? restaurants.find(r => r.id === mostActiveRestaurant[0])?.restaurantName
       : 'N/A';
 
-    // Calculate total revenue per restaurant
     const restaurantRevenue = filteredOrders.reduce((acc: { [key: string]: number }, order) => {
       const restaurantId = order.restaurantId;
       acc[restaurantId] = (acc[restaurantId] || 0) + (Number(order.totalPrice) || 0);
       return acc;
     }, {});
 
-    // Find highest revenue restaurant
     const highestRevenue = Object.entries(restaurantRevenue)
       .sort(([, a], [, b]) => b - a)[0];
 
@@ -513,23 +490,19 @@ export default function Overview() {
     };
   }, [restaurants, orders, selectedOverviewMonth]);
 
-  // Group orders by restaurant for Recent Sales with restaurant filter
   const recentSalesByRestaurant = useMemo(() => {
-    // Filter orders by selected month
     const [year, month] = selectedMonth.split('-');
     const filteredOrders = orders.filter(order => {
       const orderDate = new Date(order.orderDate);
       const monthMatch = orderDate.getFullYear() === parseInt(year) && 
                         orderDate.getMonth() === parseInt(month) - 1;
       
-      // Additional filter for selected restaurant
       const restaurantMatch = selectedRecentSalesRestaurant === 'all' || 
                             order.restaurantId === selectedRecentSalesRestaurant;
       
       return monthMatch && restaurantMatch;
     });
     
-    // Group by restaurant
     return filteredOrders.reduce((acc: { [key: string]: any[] }, order) => {
       const restaurantName = order.restaurantName;
       if (!acc[restaurantName]) {
@@ -546,25 +519,20 @@ export default function Overview() {
     }, {});
   }, [orders, selectedMonth, selectedRecentSalesRestaurant]);
 
-  // Update the map initialization useEffect
   useEffect(() => {
     if (!mapRef.current || !orders.length) return;
 
-    // Add styles to head
     const styleSheet = document.createElement("style");
     styleSheet.textContent = mapStyle;
     document.head.appendChild(styleSheet);
 
-    // Clear any existing map
     mapRef.current.innerHTML = '';
 
-    // Create map container
     const mapContainer = document.createElement('div');
     mapContainer.style.width = '100%';
     mapContainer.style.height = '100%';
     mapRef.current.appendChild(mapContainer);
 
-    // Extract delivery locations from orders with valid coordinates
     const deliveryLocations = orders
       .filter(order => 
         order.dropoffLocation && 
@@ -574,10 +542,9 @@ export default function Overview() {
       .map(order => ({
         lat: order.dropoffLocation.lat,
         lon: order.dropoffLocation.lng,
-        weight: 1 // Add weight for heatmap
+        weight: 1 
       }));
 
-    // Only proceed if we have valid locations
     if (deliveryLocations.length === 0) {
       const noDataMessage = document.createElement('div');
       noDataMessage.className = 'flex items-center justify-center h-full text-gray-500';
@@ -586,7 +553,6 @@ export default function Overview() {
       return;
     }
 
-    // Calculate center point (average of all locations)
     const center = deliveryLocations.reduce(
       (acc, loc) => ({
         lat: acc.lat + loc.lat / deliveryLocations.length,
@@ -595,7 +561,6 @@ export default function Overview() {
       { lat: 0, lon: 0 }
     );
 
-    // Initialize the map with Geoapify
     const map = new maplibregl.Map({
       container: mapContainer,
       style: `https://maps.geoapify.com/v1/styles/osm-bright-smooth/style.json?apiKey=${GEOAPIFY_API_KEY}`,
@@ -603,7 +568,6 @@ export default function Overview() {
       zoom: 11
     });
 
-    // Add markers for each delivery location
     deliveryLocations.forEach(location => {
       const markerElement = document.createElement('div');
       markerElement.className = 'delivery-marker';
@@ -613,7 +577,6 @@ export default function Overview() {
         .addTo(map);
     });
 
-    // Add heatmap layer if there are enough points
     if (deliveryLocations.length > 5) {
       map.on('load', () => {
         map.addSource('delivery-points', {
@@ -638,9 +601,7 @@ export default function Overview() {
           type: 'heatmap',
           source: 'delivery-points',
           paint: {
-            // Increase the heatmap weight based on frequency of deliveries
             'heatmap-weight': ['get', 'weight'],
-            // Increase the heatmap color weight by zoom level
             'heatmap-intensity': [
               'interpolate',
               ['linear'],
@@ -648,7 +609,6 @@ export default function Overview() {
               0, 1,
               9, 3
             ],
-            // Color ramp for heatmap.
             'heatmap-color': [
               'interpolate',
               ['linear'],
@@ -660,7 +620,6 @@ export default function Overview() {
               0.8, 'rgb(239,138,98)',
               1, 'rgb(178,24,43)'
             ],
-            // Adjust the heatmap radius by zoom level
             'heatmap-radius': [
               'interpolate',
               ['linear'],
@@ -668,7 +627,6 @@ export default function Overview() {
               0, 2,
               9, 20
             ],
-            // Transition from heatmap to circle layer by zoom level
             'heatmap-opacity': [
               'interpolate',
               ['linear'],
@@ -681,17 +639,14 @@ export default function Overview() {
       });
     }
 
-    // Add navigation controls
     map.addControl(new maplibregl.NavigationControl());
 
-    // Cleanup function
     return () => {
       map.remove();
       document.head.removeChild(styleSheet);
     };
   }, [orders, GEOAPIFY_API_KEY]);
 
-  // Update the map styles
   const mapStyle = `
     .delivery-marker {
       width: 12px;
@@ -709,7 +664,6 @@ export default function Overview() {
     }
   `;
 
-  // Fetch all customers from orders
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
@@ -734,7 +688,6 @@ export default function Overview() {
 
         const data = await response.json();
         
-        // Process orders to get unique customers with their stats
         const customerMap = new Map();
         
         data.forEach((order: Order) => {
@@ -776,7 +729,6 @@ export default function Overview() {
     fetchCustomers();
   }, []);
 
-  // Filter customers based on search and filter
   const filteredCustomers = useMemo(() => {
     return customers.filter(customer => {
       const matchesSearch = 
@@ -792,7 +744,6 @@ export default function Overview() {
     });
   }, [customers, customerSearchQuery, customerFilter]);
 
-  // Export customers to CSV
   const handleExportCustomers = () => {
     const csvData = filteredCustomers.map(customer => ({
       'Customer Name': customer.name,
@@ -839,7 +790,6 @@ export default function Overview() {
 
       const data = await response.json();
       
-      // Filter orders for this customer
       const customerOrders = data
         .filter((order: Order) => 
           order.customerName === customer.name && 
@@ -868,7 +818,6 @@ export default function Overview() {
     }
   };
 
-  // Fetch restaurants
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
@@ -901,7 +850,6 @@ export default function Overview() {
     fetchRestaurants();
   }, []);
 
-  // Fetch menu items from all restaurants
   useEffect(() => {
     const fetchAllMenuItems = async () => {
       try {
@@ -926,10 +874,8 @@ export default function Overview() {
 
         const menuData = await response.json();
         
-        // Get restaurant names from the restaurants state
         const restaurantMap = new Map(restaurants.map(r => [r.id, r.restaurantName]));
         
-        // Filter and map menu items with restaurant names
         const validMenuItems = menuData
           .filter((item: MenuType) => 
             item.foodType && item.foodType.trim() !== '' && 
@@ -954,7 +900,6 @@ export default function Overview() {
     }
   }, [restaurants]);
 
-  // Get unique food types and ensure they're not empty strings
   const foodTypes = useMemo(() => {
     const types = new Set<string>();
     menuItems.forEach(item => {
@@ -965,7 +910,6 @@ export default function Overview() {
     return ['all', ...Array.from(types)];
   }, [menuItems]);
 
-  // Update the filtered and paginated menu items
   const filteredAndPaginatedMenuItems = useMemo(() => {
     let items = menuItems;
     
@@ -983,7 +927,6 @@ export default function Overview() {
       })).filter(item => item.foods.length > 0);
     }
 
-    // Calculate total items and pages
     const flattenedItems = items.flatMap(item => 
       item.foods.map(food => ({ ...food, foodType: item.foodType, restaurantName: item.restaurantName }))
     );
@@ -998,7 +941,6 @@ export default function Overview() {
     };
   }, [menuItems, selectedFoodType, menuSearchQuery, currentPage]);
 
-  // Update the recentSalesByRestaurant calculation
   const paginatedRecentSales = useMemo(() => {
     const allSales = Object.values(recentSalesByRestaurant).flat().sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -1014,7 +956,6 @@ export default function Overview() {
     };
   }, [recentSalesByRestaurant, recentSalesPage]);
 
-  // Update the customers pagination
   const paginatedCustomers = useMemo(() => {
     const startIndex = (customersPage - 1) * customersPerPage;
     const endIndex = startIndex + customersPerPage;
@@ -1026,9 +967,7 @@ export default function Overview() {
     };
   }, [filteredCustomers, customersPage]);
 
-  // Calculate rewards data
   const rewardsData = useMemo(() => {
-    // Filter orders by selected month
     const [year, month] = selectedRewardsMonth.split('-');
     const filteredOrders = orders.filter(order => {
       const orderDate = new Date(order.orderDate);
@@ -1036,12 +975,10 @@ export default function Overview() {
              orderDate.getMonth() === parseInt(month) - 1;
     });
 
-    // Calculate points (1 point for every GH₵1 spent)
     const pointsPerCedi = 1;
     const totalSpent = filteredOrders.reduce((sum, order) => sum + Number(order.totalPrice), 0);
     const totalPoints = Math.floor(totalSpent * pointsPerCedi);
     
-    // Calculate points per customer
     const customerPoints = filteredOrders.reduce((acc, order) => {
       const customerId = `${order.customerName}-${order.customerPhoneNumber}`;
       const points = Math.floor(Number(order.totalPrice) * pointsPerCedi);
@@ -1062,7 +999,6 @@ export default function Overview() {
       return acc;
     }, {} as Record<string, { name: string; points: number; totalSpent: number; orders: number; }>);
 
-    // Get top earners
     const topEarners = Object.values(customerPoints)
       .sort((a, b) => b.points - a.points)
       .slice(0, 5)
@@ -1071,7 +1007,6 @@ export default function Overview() {
         level: customer.points >= 2000 ? "Gold" : customer.points >= 1000 ? "Silver" : "Bronze"
       }));
 
-    // Calculate courier performance
     const courierDeliveries = filteredOrders.reduce((acc, order) => {
       if (!order.courierName) return acc;
       
@@ -1091,22 +1026,11 @@ export default function Overview() {
       return acc;
     }, {} as Record<string, { name: string; deliveries: number; points: number; totalEarned: number; }>);
 
-    // Calculate restaurant performance
     const restaurantPerformance = filteredOrders.reduce((acc, order) => {
-      // Skip if no restaurant ID or total price
       if (!order.restaurantId || !order.totalPrice) return acc;
       
-      // Find restaurant name from restaurants array
       const restaurant = restaurants.find(r => r.id === order.restaurantId);
       if (!restaurant) return acc;
-      
-      // Log each order for debugging
-      console.log('Processing order:', {
-        restaurantId: order.restaurantId,
-        restaurantName: restaurant.restaurantName,
-        totalPrice: order.totalPrice,
-        orderDate: order.orderDate
-      });
       
       const restaurantKey = restaurant.restaurantName;
       const orderTotal = Number(order.totalPrice);
@@ -1136,32 +1060,19 @@ export default function Overview() {
       averageOrderValue: number; 
     }>);
 
-    // Get top restaurants
     const topRestaurants = Object.entries(restaurantPerformance)
       .filter(([_, restaurant]) => restaurant.name && restaurant.name.trim() !== '')
       .map(([_, restaurant]) => restaurant)
       .sort((a, b) => b.points - a.points)
       .slice(0, 3);
 
-    // Log for debugging
-    console.log('Filtered Orders:', filteredOrders.map(o => ({ 
-      restaurantId: o.restaurantId,
-      restaurantName: restaurants.find(r => r.id === o.restaurantId)?.restaurantName,
-      totalPrice: o.totalPrice,
-      orderDate: o.orderDate 
-    })));
-    console.log('Restaurants:', restaurants);
-    console.log('Restaurant Performance Object:', restaurantPerformance);
-    console.log('Top Restaurants Array:', topRestaurants);
-
-    // Get top couriers
     const topCouriers = Object.values(courierDeliveries)
       .sort((a, b) => b.deliveries - a.deliveries)
       .slice(0, 3);
 
     return {
       pointsIssued: totalPoints,
-      pointsValue: totalPoints * 0.1, // GH₵0.1 per point
+      pointsValue: totalPoints * 0.1, 
       topEarners,
       topCouriers,
       topRestaurants,
@@ -1323,173 +1234,76 @@ export default function Overview() {
             </Card>
           </div>
 
-          {/* Active Now Section */}
-          <div className="mb-16">
-            <h2 className="text-2xl font-bold mb-6">Active Now</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 relative">
-              {couriers.map((courier: any, index: number) => (
-                <React.Fragment key={courier.name}>
-                  <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <div className="flex items-center gap-3">
-                        {courier.image ? (
-                          <img 
-                            src={courier.image} 
-                            alt={courier.name}
-                            className="h-8 w-8 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                            <User className="h-4 w-4 text-gray-500" />
-                          </div>
-                        )}
-                        <CardTitle className="text-sm font-medium">{courier.name}</CardTitle>
-                      </div>
-                      <User className="h-4 w-4 text-gray-500" />
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-gray-500">{courier.phoneNumber}</p>
-                      <div className="flex justify-between items-center mt-1">
-                        <p className="text-sm text-gray-500">{courier.orders.length} orders</p>
-                        <p className="text-sm font-medium text-green-600">
-                          GH₵{courier.orders.reduce((total: number, order: any) => total + (Number(order.deliveryPrice) || 0), 0).toFixed(2)}
-                        </p>
-                      </div>
-                      
-                      {/* Progress Line */}
-                      <div className="mt-4 relative">
-                        {/* Progress Lines */}
-                        <div className="flex gap-1 h-1 w-full">
-                          {Object.entries(getOrderProgress(courier.orders)).map(([status, isComplete], index) => (
-                            <div 
-                              key={status}
-                              className={`flex-1 rounded-full ${
-                                isComplete 
-                                  ? status === 'Assigned' ? 'bg-blue-500'
-                                    : status === 'Pickup' ? 'bg-yellow-500'
-                                    : status === 'OnTheWay' ? 'bg-purple-500'
-                                    : 'bg-green-500'
-                                  : 'bg-gray-200 dark:bg-gray-700'
-                              }`}
-                            />
-                          ))}
-                        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+            <Card className="bg-gray-900 text-white">
+              <CardHeader>
+                <CardTitle>Total Restaurants</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-between items-center">
+                  <p className="text-2xl font-bold">{restaurantMetrics.totalRestaurants}</p>
+                  <Building2 className="h-6 w-6 text-white/80" />
+                </div>
+                <p className="text-sm text-white/80">Active restaurants</p>
+              </CardContent>
+            </Card>
 
-                        {/* Status Labels */}
-                        <div className="flex justify-between mt-2">
-                          {Object.entries(getOrderProgress(courier.orders)).map(([status]) => (
-                            <span key={status} className="text-xs text-gray-500">
-                              {status === 'Assigned' ? 'Assigned' :
-                               status === 'Pickup' ? 'Picked Up' :
-                               status === 'OnTheWay' ? 'On Way' :
-                               'Completed'}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  {index < couriers.length - 1 && (
-                    <div className="hidden lg:block absolute h-4/5 w-px bg-gray-200 top-1/2 -translate-y-1/2" style={{ left: `${(index + 1) * (100 / 5)}%` }} />
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
+            <Card className="bg-gray-900 text-white">
+              <CardHeader>
+                <CardTitle>Most Active</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-2xl font-bold truncate max-w-[180px]">
+                      {restaurantMetrics.mostActiveRestaurant.name}
+                    </p>
+                    <p className="text-sm text-white/80">
+                      {restaurantMetrics.mostActiveRestaurant.orders} orders
+                    </p>
+                  </div>
+                  <TrendingUp className="h-6 w-6 text-white/80" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gray-900 text-white">
+              <CardHeader>
+                <CardTitle>Highest Revenue</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-2xl font-bold truncate max-w-[180px]">
+                      {restaurantMetrics.highestRevenue.name}
+                    </p>
+                    <p className="text-sm text-white/80">
+                      GH₵{restaurantMetrics.highestRevenue.amount.toFixed(2)}
+                    </p>
+                  </div>
+                  <DollarSign className="h-6 w-6 text-white/80" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gray-900 text-white">
+              <CardHeader>
+                <CardTitle>Average Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-2xl font-bold">
+                      {restaurantMetrics.averageOrdersPerRestaurant}
+                    </p>
+                    <p className="text-sm text-white/80">Orders per restaurant</p>
+                  </div>
+                  <ChartBar className="h-6 w-6 text-white/80" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Restaurant Overview Section with Combined Filter */}
-          <div className="mb-16">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Restaurant Overview</h2>
-              <Select value={selectedOverviewMonth} onValueChange={setSelectedOverviewMonth}>
-                <SelectTrigger className="w-[180px] bg-gray-50 border-gray-200 hover:bg-gray-100">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white/95 backdrop-blur-sm">
-                  {Array.from({ length: 12 }, (_, i) => {
-                    const date = new Date();
-                    date.setMonth(date.getMonth() - i);
-                    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                    const label = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-                    return (
-                      <SelectItem key={value} value={value}>{label}</SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="bg-gray-900 text-white">
-                <CardHeader>
-                  <CardTitle>Total Restaurants</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center">
-                    <p className="text-2xl font-bold">{restaurantMetrics.totalRestaurants}</p>
-                    <Building2 className="h-6 w-6 text-white/80" />
-                  </div>
-                  <p className="text-sm text-white/80">Active restaurants</p>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gray-900 text-white">
-                <CardHeader>
-                  <CardTitle>Most Active</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-2xl font-bold truncate max-w-[180px]">
-                        {restaurantMetrics.mostActiveRestaurant.name}
-                      </p>
-                      <p className="text-sm text-white/80">
-                        {restaurantMetrics.mostActiveRestaurant.orders} orders
-                      </p>
-                    </div>
-                    <TrendingUp className="h-6 w-6 text-white/80" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gray-900 text-white">
-                <CardHeader>
-                  <CardTitle>Highest Revenue</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-2xl font-bold truncate max-w-[180px]">
-                        {restaurantMetrics.highestRevenue.name}
-                      </p>
-                      <p className="text-sm text-white/80">
-                        GH₵{restaurantMetrics.highestRevenue.amount.toFixed(2)}
-                      </p>
-                    </div>
-                    <DollarSign className="h-6 w-6 text-white/80" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gray-900 text-white">
-                <CardHeader>
-                  <CardTitle>Average Orders</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-2xl font-bold">
-                        {restaurantMetrics.averageOrdersPerRestaurant}
-                      </p>
-                      <p className="text-sm text-white/80">Orders per restaurant</p>
-                    </div>
-                    <ChartBar className="h-6 w-6 text-white/80" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* Overview Graph Section - No Filter Needed */}
           <div className="mb-16">
             <h2 className="text-2xl font-bold mb-6">Monthly Earnings</h2>
             <Card className="p-6">
@@ -1540,7 +1354,6 @@ export default function Overview() {
             </Card>
           </div>
 
-          {/* Recent Sales Section */}
           <div className="mb-16">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Recent Sales</h2>
@@ -1642,7 +1455,6 @@ export default function Overview() {
             </Card>
           </div>
 
-          {/* New Sections Suggestions */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-16 mb-8">
             <Card>
               <CardHeader>
@@ -1665,7 +1477,6 @@ export default function Overview() {
               </CardHeader>
               <CardContent>
                 <div className="h-[300px] bg-gray-100 rounded-lg">
-                  {/* Add a time-based chart here */}
                   <div className="flex items-center justify-center h-full text-gray-500">
                     Time-based chart coming soon
                   </div>
@@ -1756,7 +1567,10 @@ export default function Overview() {
                               {new Date(customer.lastOrderDate).toLocaleDateString()}
                             </td>
                             <td className="px-6 py-4">
-                              <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                              <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                                customer.status === 'Active' ? 'bg-green-100 text-green-800' :
+                                customer.status === 'Inactive' ? 'bg-red-100 text-red-800' :
+                                'bg-blue-100 text-blue-800'}`}>
                                 {customer.status}
                               </span>
                             </td>
@@ -1863,7 +1677,6 @@ export default function Overview() {
                   ))}
                 </div>
                 
-                {/* Pagination */}
                 <div className="flex justify-between items-center mt-6">
                   <p className="text-sm text-gray-500">
                     Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndPaginatedMenuItems.totalItems)} of {filteredAndPaginatedMenuItems.totalItems} items
@@ -1914,11 +1727,9 @@ export default function Overview() {
               </Select>
             </div>
 
-            {/* Points Overview Section */}
             <div>
               <h3 className="text-lg font-semibold mb-4">Points Overview</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Points System Card */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Points System</CardTitle>
@@ -1941,7 +1752,6 @@ export default function Overview() {
                   </CardContent>
                 </Card>
 
-                {/* Monthly Performance Card */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Monthly Performance</CardTitle>
@@ -1964,7 +1774,6 @@ export default function Overview() {
                   </CardContent>
                 </Card>
 
-                {/* Reward Tiers Card */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Reward Tiers</CardTitle>
@@ -1998,11 +1807,9 @@ export default function Overview() {
               </div>
             </div>
 
-            {/* Top Performers Section */}
             <div className="border-t pt-8">
               <h3 className="text-lg font-semibold mb-4">Top Performers</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Top Reward Earners Card */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Top Customers</CardTitle>
@@ -2030,7 +1837,6 @@ export default function Overview() {
                   </CardContent>
                 </Card>
 
-                {/* Top Performing Couriers Card */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Top Performing Couriers</CardTitle>
@@ -2053,7 +1859,6 @@ export default function Overview() {
                   </CardContent>
                 </Card>
 
-                {/* Top Performing Restaurants Card */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Top Performing Restaurants</CardTitle>
@@ -2081,7 +1886,6 @@ export default function Overview() {
               </div>
             </div>
 
-            {/* Available Rewards Section */}
             <div className="border-t pt-8">
               <h3 className="text-lg font-semibold mb-4">Available Rewards</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -2180,4 +1984,4 @@ export default function Overview() {
       </Dialog>
     </div>
   );
-} 
+}

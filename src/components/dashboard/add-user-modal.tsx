@@ -20,7 +20,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { Sonner } from "@/components/ui/sonner"
 
 interface Branch {
   id: string
@@ -55,12 +54,10 @@ interface FormData {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const GET_USERS_ENDPOINT = import.meta.env.VITE_GET_USERS_ENDPOINT;
-const ADD_MEMBER_ENDPOINT = import.meta.env.VITE_ADD_MEMBER_ENDPOINT;
 
 export function AddUserModal({ isOpen, onClose, onSuccess, restaurantId, branches }: AddUserModalProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [roles, setRoles] = useState<string[]>([])
-  const [isLoadingRoles, setIsLoadingRoles] = useState(true)
   const [formData, setFormData] = useState<FormData>({
     userName: "",
     fullName: "",
@@ -82,7 +79,6 @@ export function AddUserModal({ isOpen, onClose, onSuccess, restaurantId, branche
   useEffect(() => {
     const fetchRoles = async () => {
       try {
-        setIsLoadingRoles(true)
         const response = await fetch(
           `${API_BASE_URL}${GET_USERS_ENDPOINT}`,
           {
@@ -105,8 +101,6 @@ export function AddUserModal({ isOpen, onClose, onSuccess, restaurantId, branche
       } catch (error) {
         console.error('Error fetching roles:', error)
         toast.error('Failed to load roles')
-      } finally {
-        setIsLoadingRoles(false)
       }
     }
 

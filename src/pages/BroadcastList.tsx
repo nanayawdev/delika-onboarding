@@ -10,8 +10,23 @@ import { toast } from 'sonner';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // Access the API base URL directly
 const DELETE_BROADCAST_ENDPOINT = import.meta.env.VITE_DELETE_BROADCAST_ENDPOINT;
 
+interface Restaurant {
+  id: string;
+  restaurantName: string;
+}
+
+interface Broadcast {
+  id: string;
+  Header: string;
+  Body: string;
+  Footer?: string;
+  ExpiryDate?: string;
+  Image?: { url: string };
+  restaurants?: { restaurantId: string }[];
+}
+
 const BroadcastList: React.FC = () => {
-  const [broadcasts, setBroadcasts] = useState<any[]>([]);
+  const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [restaurants, setRestaurants] = useState<{ [key: string]: string }>({}); // Mapping of restaurantId to restaurant name
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +42,7 @@ const BroadcastList: React.FC = () => {
       }
       const data = await response.json();
       // Create a mapping of restaurantId to restaurant name
-      const restaurantMap = data.reduce((acc: { [key: string]: string }, restaurant: { id: string; restaurantName: string }) => {
+      const restaurantMap = data.reduce((acc: { [key: string]: string }, restaurant: Restaurant) => {
         acc[restaurant.id] = restaurant.restaurantName;
         return acc;
       }, {});
@@ -59,7 +74,7 @@ const BroadcastList: React.FC = () => {
     fetchBroadcasts(); // Fetch broadcasts
   }, []);
 
-  const handleBroadcastSuccess = (message: string) => {
+  const handleBroadcastSuccess = (message: string) => { 
     fetchBroadcasts(); // Refresh the list after a new broadcast is created
   };
 
@@ -106,7 +121,7 @@ const BroadcastList: React.FC = () => {
         </Button>
       </div>
       <div className="grid grid-cols-1 gap-4">
-        {broadcasts.map(broadcast => (
+        {broadcasts.map((broadcast: Broadcast) => (
           <Card key={broadcast.id} className="flex border border-gray-300 rounded-lg shadow-md w-full">
             {broadcast.Image && broadcast.Image.url && (
               <img 
@@ -139,7 +154,7 @@ const BroadcastList: React.FC = () => {
 
               {broadcast.restaurants && broadcast.restaurants.length > 0 && (
                 <p className="text-gray-600">
-                  Sent to: {broadcast.restaurants.map(restaurant => restaurants[restaurant.restaurantId] || restaurant.restaurantId).join(', ')}
+                  Sent to: {broadcast.restaurants.map((restaurant: { restaurantId: string }) => restaurants[restaurant.restaurantId] || restaurant.restaurantId).join(', ')}
                 </p>
               )}
             </div>
