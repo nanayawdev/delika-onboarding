@@ -580,6 +580,9 @@ export default function RestaurantDetail() {
     return menuItems.slice(startIndex, startIndex + itemsPerSlide);
   }, [menuItems, currentSlide, itemsPerSlide]);
 
+  // Filter menu items based on search
+
+
   const handleCourierClick = (courier: Courier) => {
     setSelectedCourier(courier);
     setIsCourierModalOpen(true);
