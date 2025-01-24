@@ -9,11 +9,9 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Pagination } from "@/components/ui/pagination";
 import { toast } from "sonner";
 import { DollarSign, TrendingUp, Users, Route, Building2, ChartBar, BadgeCent, Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -145,7 +143,7 @@ export default function Overview() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
   const [recentSalesPage, setRecentSalesPage] = useState(1);
-  const [customersPage, setCustomersPage] = useState(1);
+  const [customersPage] = useState(1);
   const recentSalesPerPage = 10;
   const customersPerPage = 10;
   const [selectedRewardsMonth, setSelectedRewardsMonth] = useState(() => {
