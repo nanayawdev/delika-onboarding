@@ -14,7 +14,7 @@ import {
 import { Sonner } from "@/components/ui/sonner"
 import { toast } from "sonner"
 import LocationInput from "@/components/ui/LocationInput";
-import { LocationData } from '../../../types/location'; // Ensure this path is correct
+import { LocationData } from '../../types/location'; // Ensure this path is correct
 
 interface AddBranchModalProps {
   restaurantId: string; // Add this property to AddBranchModalProps
