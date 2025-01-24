@@ -46,12 +46,12 @@ import {
   MoreHorizontal,
   Pencil,
   Trash2,
-  User,
+  User as UserIcon,
   Search,
   CalendarIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { Restaurant, Branch, Courier, OrderProgress, Order, User as UserType, MenuType } from '../../types';
+import type { Restaurant, Branch, Courier, OrderProgress, Order, User, MenuType, Food } from '../../types';
 import { API_BASE_URL } from '../../config';
 import { formatCurrency } from '../../utils/format';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -86,140 +86,6 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel"
-
-interface Restaurant {
-  id: string
-  restaurantName: string
-  restaurantEmail: string
-  restaurantPhoneNumber: string
-  restaurantAddress: string
-  restaurantLogo: {
-    url: string
-    name: string
-    access: string
-    path: string
-    type: string
-    size: number
-    mime: string
-    meta: {
-      width: number
-      height: number
-    }
-  }
-  created_at: number
-}
-
-interface Branch {
-  id: string
-  created_at: number
-  branchName: string
-  restaurantID: string
-  branchLocation: string
-  branchPhoneNumber: string
-  branchCity: string
-  branchLongitude: string
-  branchLatitude: string
-  _restaurantTable: Restaurant[]
-}
-
-interface OrderProduct {
-  name: string;
-  price: number;
-  quantity: number;
-  image: string | null;
-}
-
-interface OrderLocation {
-  fromLatitude?: number;
-  fromLongitude?: number;
-  fromAddress?: string;
-  toLatitude?: number;
-  toLongitude?: number;
-  toAddress?: string;
-}
-
-interface Order {
-  id: string;
-  created_at: number;
-  restaurantId: string;
-  branchId: string;
-  customerName: string;
-  customerPhoneNumber: string;
-  orderNumber: string;
-  deliveryDistance: number;
-  trackingUrl: string;
-  courierName: string;
-  courierPhoneNumber: string;
-  orderStatus: 'Assigned' | 'Pickup' | 'OnTheWay' | 'Delivered' | string;
-  orderDate: string;
-  deliveryPrice: number;
-  orderPrice: number;
-  totalPrice: number;
-  pickupName: string;
-  dropoffName: string;
-  foodAndDeliveryFee: boolean;
-  onlyDeliveryFee: boolean;
-  payNow: boolean;
-  payLater: boolean;
-  paymentStatus: string;
-  dropOffCity: string;
-  orderComment: string;
-  products: OrderProduct[];
-  pickup: OrderLocation[];
-  dropOff: OrderLocation[];
-  [key: string]: any; // Add index signature
-}
-
-interface Food {
-  name: string;
-  price: number;
-  description: string;
-  foodImage?: {
-    url: string;
-  };
-}
-
-interface MenuType {
-  foodType: string;
-  foodTypeImage: {
-    url: string;
-  };
-  restaurantName: string;
-  branchName: string;
-  foods: Food[];
-  foodImage?: {
-    url: string;
-  };
-  name?: string;
-  description?: string;
-  price?: number;
-}
-
-interface Courier {
-  name: string;
-  image?: { url: string };
-  phoneNumber: string;
-  orders: Order[];
-}
-
-interface OrderProgress {
-  Assigned: boolean;
-  Pickup: boolean;
-  OnTheWay: boolean;
-  Delivered: boolean;
-  [key: string]: boolean; // Add index signature
-}
-
-interface User {
-  id: string;
-  fullName: string;
-  email: string;
-  role: string;
-  branchId?: string;
-  image?: {
-    url: string;
-  };
-}
 
 const capitalizeFirstLetter = (string: string): string => {
   return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
@@ -722,7 +588,7 @@ export default function RestaurantDetail() {
     return statuses;
   };
 
-  const handlePageChange = (_event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
+  const handlePageChange = (_: React.MouseEvent<HTMLButtonElement> | null, newPage: number): void => {
     setCurrentPage(newPage + 1);
   };
 
@@ -776,7 +642,7 @@ export default function RestaurantDetail() {
     
     if (!menuSearchQuery) return categoryItems;
     
-    return categoryItems.filter(food => 
+    return categoryItems.filter((food: Food) => 
       food.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
       food.description.toLowerCase().includes(menuSearchQuery.toLowerCase())
     );
@@ -790,11 +656,11 @@ export default function RestaurantDetail() {
     setIsCourierModalOpen(true);
   };
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setSearchQuery(e.target.value);
   };
 
-  const handleMenuSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMenuSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setMenuSearchQuery(e.target.value);
   };
 
@@ -977,7 +843,7 @@ export default function RestaurantDetail() {
                                       />
                                     ) : (
                                       <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                                        <User className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                        <UserIcon className="h-4 w-4 text-gray-500" />
                                       </div>
                                     )}
                                     {user.fullName}
@@ -1445,12 +1311,12 @@ export default function RestaurantDetail() {
                                               />
                                             ) : (
                                               <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                                                <User className="h-4 w-4 text-gray-500" />
+                                                <UserIcon className="h-4 w-4 text-gray-500" />
                                               </div>
                                             )}
                                             <CardTitle className="text-sm font-medium">{courier.name}</CardTitle>
                                           </div>
-                                          <User className="h-4 w-4 text-gray-500" />
+                                          <UserIcon className="h-4 w-4 text-gray-500" />
                                         </CardHeader>
                                         <CardContent>
                                           <p className="text-sm text-gray-500">{courier.phoneNumber}</p>
