@@ -10,6 +10,7 @@ import { OTPVerificationModal } from './otp-verification-modal'
 import { toast } from "sonner"
 import { Sonner } from "@/components/ui/sonner"
 import { Eye, EyeOff } from "lucide-react"
+import { API_BASE_URL, SIGN_IN_ENDPOINT, SEND_OTP_ENDPOINT } from "@/lib/constants"
 
 interface SignInDetails {
   email: string
@@ -20,10 +21,6 @@ interface SignInResponse {
   authToken: string
   delika_onboarding_id: string
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-const SIGN_IN_ENDPOINT = import.meta.env.VITE_SIGN_IN_ENDPOINT;
-const SEND_OTP_ENDPOINT = import.meta.env.VITE_SEND_OTP_ENDPOINT;
 
 export default function SignIn() {
   const navigate = useNavigate()
