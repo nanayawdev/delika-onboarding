@@ -13,7 +13,7 @@ import {
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { DollarSign, TrendingUp, Users, Route, Building2, ChartBar, BadgeCent, Search } from "lucide-react";
+import { DollarSign, TrendingUp, Building2, ChartBar, Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -904,7 +904,9 @@ export default function Overview() {
                         const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                         const label = date.toLocaleString('default', { month: 'long', year: 'numeric' });
                         return (
-                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
                         );
                       })}
                     </SelectContent>
@@ -913,113 +915,56 @@ export default function Overview() {
               </CardHeader>
               <CardContent>
                 <div className="flex justify-between items-center">
-                  {isLoadingOrders ? (
-                    <p className="text-2xl font-bold">Loading...</p>
-                  ) : orderError ? (
-                    <p className="text-2xl font-bold text-red-300">Error loading data</p>
-                  ) : (
-                    <p className="text-2xl font-bold">GH₵{monthlyMetrics.revenue.toFixed(2)}</p>
-                  )}
-                  <BadgeCent className="h-6 w-6 text-white/80" />
+                  <p className="text-2xl font-bold">{restaurantMetrics.length}</p>
+                  <Building2 className="h-6 w-6 text-white/80" />
                 </div>
-                <p className="text-sm text-white/80">Monthly delivery revenue</p>
+                <p className="text-sm text-white/80">Total Restaurants</p>
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
               <CardHeader>
-                <CardTitle className="flex justify-between items-center">
-                  <span>Top Sales</span>
-                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                    <SelectTrigger className="w-[120px] bg-white/10 border-0 text-white hover:bg-white/20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white/95 backdrop-blur-sm border-0">
-                      {Array.from({ length: 12 }, (_, i) => {
-                        const date = new Date();
-                        date.setMonth(date.getMonth() - i);
-                        const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                        const label = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-                        return (
-                          <SelectItem key={value} value={value}>{label}</SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </CardTitle>
+                <CardTitle>Most Active Restaurant</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex justify-between items-center">
-                  <p className="text-2xl font-bold">{filterOrdersByMonth(orders, selectedMonth).length}</p>
-                  <TrendingUp className="h-6 w-6 text-white/80" />
+                <div>
+                  <p className="text-2xl font-bold truncate max-w-[180px]">
+                    {restaurantMetrics[0]?.name || 'No data'}
+                  </p>
+                  <p className="text-sm text-white/80">
+                    {restaurantMetrics[0]?.totalOrders || 0} orders
+                  </p>
                 </div>
-                <p className="text-sm text-white/80">Total orders this month</p>
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
               <CardHeader>
-                <CardTitle className="flex justify-between items-center">
-                  <span>Best Courier</span>
-                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                    <SelectTrigger className="w-[120px] bg-white/10 border-0 text-white hover:bg-white/20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white/95 backdrop-blur-sm border-0">
-                      {Array.from({ length: 12 }, (_, i) => {
-                        const date = new Date();
-                        date.setMonth(date.getMonth() - i);
-                        const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                        const label = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-                        return (
-                          <SelectItem key={value} value={value}>{label}</SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </CardTitle>
+                <CardTitle>Highest Revenue Restaurant</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex justify-between items-center">
-                  <p className="text-2xl font-bold">{monthlyMetrics.bestCourier?.name || 'No data'}</p>
-                  <Users className="h-6 w-6 text-white/80" />
+                <div>
+                  <p className="text-2xl font-bold truncate max-w-[180px]">
+                    {restaurantMetrics[0]?.name || 'No data'}
+                  </p>
+                  <p className="text-sm text-white/80">
+                    GH₵{restaurantMetrics[0]?.totalRevenue.toFixed(2) || '0.00'}
+                  </p>
                 </div>
-                <p className="text-sm text-white/80">
-                  {monthlyMetrics.bestCourier ? 
-                    `${monthlyMetrics.bestCourier.totalDeliveries} deliveries` : 
-                    'No deliveries this month'}
-                </p>
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
               <CardHeader>
-                <CardTitle className="flex justify-between items-center">
-                  <span>Most Distance</span>
-                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                    <SelectTrigger className="w-[120px] bg-white/10 border-0 text-white hover:bg-white/20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white/95 backdrop-blur-sm border-0">
-                      {Array.from({ length: 12 }, (_, i) => {
-                        const date = new Date();
-                        date.setMonth(date.getMonth() - i);
-                        const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                        const label = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-                        return (
-                          <SelectItem key={value} value={value}>{label}</SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </CardTitle>
+                <CardTitle>Average Orders</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex justify-between items-center">
-                  <p className="text-2xl font-bold">{monthlyMetrics.totalDistance.toFixed(1)} km</p>
-                  <Route className="h-6 w-6 text-white/80" />
+                <div>
+                  <p className="text-2xl font-bold">
+                    {restaurantMetrics[0]?.totalOrders || 0}
+                  </p>
+                  <p className="text-sm text-white/80">Orders per restaurant</p>
                 </div>
-                <p className="text-sm text-white/80">Total distance this month</p>
               </CardContent>
             </Card>
           </div>
@@ -1046,10 +991,10 @@ export default function Overview() {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-2xl font-bold truncate max-w-[180px]">
-                      {restaurantMetrics[0].name}
+                      {restaurantMetrics[0]?.name || 'No data'}
                     </p>
                     <p className="text-sm text-white/80">
-                      {restaurantMetrics[0].totalOrders} orders
+                      {restaurantMetrics[0]?.totalOrders || 0} orders
                     </p>
                   </div>
                   <TrendingUp className="h-6 w-6 text-white/80" />
@@ -1065,10 +1010,10 @@ export default function Overview() {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-2xl font-bold truncate max-w-[180px]">
-                      {restaurantMetrics[0].name}
+                      {restaurantMetrics[0]?.name || 'No data'}
                     </p>
                     <p className="text-sm text-white/80">
-                      GH₵{restaurantMetrics[0].totalRevenue.toFixed(2)}
+                      GH₵{restaurantMetrics[0]?.totalRevenue.toFixed(2) || '0.00'}
                     </p>
                   </div>
                   <DollarSign className="h-6 w-6 text-white/80" />
@@ -1084,7 +1029,7 @@ export default function Overview() {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-2xl font-bold">
-                      {restaurantMetrics[0].totalOrders}
+                      {restaurantMetrics[0]?.totalOrders || 0}
                     </p>
                     <p className="text-sm text-white/80">Orders per restaurant</p>
                   </div>
