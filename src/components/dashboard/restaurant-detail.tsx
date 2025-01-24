@@ -4,34 +4,25 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
+
+// Table components
 import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CircularProgress,
-  Container,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Divider,
-  Grid,
-  IconButton,
-  Paper,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
-  TablePagination,
   TableRow,
-  TextField,
-  Typography,
-} from '../../components/ui/table';
+} from '@/components/ui/table';
+
+// Other UI components
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+
+// Icons and other imports
 import {
   ArrowLeft,
   Mail,
@@ -51,7 +42,7 @@ import {
   CalendarIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
-import type { Restaurant, Branch, Courier, OrderProgress, Order, User, MenuType, Food } from '../../types';
+import type { Restaurant, Branch, Courier, OrderProgress, Order, User, MenuType, Food, OrderProduct } from '../../types';
 import { API_BASE_URL } from '../../config';
 import { formatCurrency } from '../../utils/format';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -80,7 +71,6 @@ import {
 import { EditBranchModal } from './edit-branch-modal'
 import krontivaLogo from '/krontivalogo.png'
 import PurseIcon from '@/assets/icons/purse-stroke-rounded'
-import { Input } from "@/components/ui/input"
 import {
   Carousel,
   CarouselContent,
@@ -662,6 +652,11 @@ export default function RestaurantDetail() {
 
   const handleMenuSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setMenuSearchQuery(e.target.value);
+  };
+
+  // Update the product total calculation with proper typing
+  const getProductTotal = (product: OrderProduct): number => {
+    return product.quantity * product.price;
   };
 
   if (!restaurant) {
@@ -1556,6 +1551,22 @@ export default function RestaurantDetail() {
               <p className="mr-2">powered by</p>
               <img src={krontivaLogo} alt="Krontiva Logo" className="h-6" />
             </footer>
+
+            {selectedCourier && (
+              <Dialog open={isCourierModalOpen} onOpenChange={() => setIsCourierModalOpen(false)}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Courier Details</DialogTitle>
+                    <DialogDescription>
+                      View details and recent orders for {selectedCourier.name}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-[80vh]">
+                    {/* ... rest of the dialog content ... */}
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
+            )}
           </>
         )}
       </div>
