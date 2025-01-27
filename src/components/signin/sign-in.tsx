@@ -65,8 +65,13 @@ export default function SignIn() {
     if (validateForm()) {
       setIsLoading(true)
       try {
-        const signInUrl = 'https://api-server.krontiva.africa/api:uEBBwbSs/delika/onboarding/login';
+        const signInUrl = `${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SIGN_IN_ENDPOINT}`;
+        console.log('Environment variables:', {
+          base: import.meta.env.VITE_API_BASE_URL,
+          endpoint: import.meta.env.VITE_SIGN_IN_ENDPOINT
+        });
         console.log('Attempting to sign in with URL:', signInUrl);
+        console.log('Request body:', JSON.stringify(signInDetails, null, 2));
         
         const response = await fetch(signInUrl, {
           method: 'POST',
@@ -95,7 +100,7 @@ export default function SignIn() {
         if (data.authToken) {
           setTempAuthData(data)
           // Generate and send OTP
-          const otpUrl = 'https://api-server.krontiva.africa/api:uEBBwbSs/reset/password/send/otp/onboarding';
+          const otpUrl = `${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SEND_OTP_ENDPOINT}`;
           console.log('Sending OTP to URL:', otpUrl);
           
           const otpResponse = await fetch(otpUrl, {
