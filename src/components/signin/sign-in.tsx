@@ -105,7 +105,11 @@ export default function SignIn() {
           
           // Generate and send OTP
           const otpUrl = `${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SEND_OTP_ENDPOINT}`;
-          console.log('Sending OTP to URL:', otpUrl);
+          console.log('Environment variables for OTP:', {
+            base: import.meta.env.VITE_API_BASE_URL,
+            endpoint: import.meta.env.VITE_SEND_OTP_ENDPOINT,
+            fullUrl: otpUrl
+          });
           
           const otpResponse = await fetch(otpUrl, {
             method: 'POST',
@@ -128,9 +132,13 @@ export default function SignIn() {
             } else {
               const textError = await otpResponse.text();
               console.error('Non-JSON error response from OTP endpoint:', textError);
+              console.error('Failed OTP URL:', otpUrl);
               throw new Error(`Failed to send OTP: Invalid API endpoint`);
             }
           }
+
+          const otpResponseData = await otpResponse.json();
+          console.log('OTP response:', otpResponseData);
 
           setShowOTPModal(true)
         } else {

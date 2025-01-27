@@ -45,6 +45,13 @@ export function OTPVerificationModal({
         throw new Error('No auth token found');
       }
 
+      // Log environment variables
+      console.log('Environment variables for OTP verification:', {
+        base: API_BASE_URL,
+        endpoint: VERIFY_OTP_ENDPOINT,
+        fullUrl: `${API_BASE_URL}${VERIFY_OTP_ENDPOINT}?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}`
+      });
+
       // Verify OTP using GET request
       const response = await fetch(
         `${API_BASE_URL}${VERIFY_OTP_ENDPOINT}?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}`, 
@@ -61,6 +68,9 @@ export function OTPVerificationModal({
       console.log('OTP verification response:', data)
 
       if (response.ok && data.otpValidate === 'otpFound') {
+        // Log auth/me URL
+        console.log('Auth/me URL:', `${API_BASE_URL}${AUTH_ME_ENDPOINT}`);
+        
         // Call auth/me endpoint to get user details
         const authMeResponse = await fetch(`${API_BASE_URL}${AUTH_ME_ENDPOINT}`, {
           method: 'GET',
@@ -70,6 +80,8 @@ export function OTPVerificationModal({
         });
 
         if (!authMeResponse.ok) {
+          const errorText = await authMeResponse.text();
+          console.error('Auth/me error:', errorText);
           throw new Error('Failed to get user details');
         }
 
