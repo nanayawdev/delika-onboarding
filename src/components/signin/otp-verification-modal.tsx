@@ -68,21 +68,34 @@ export function OTPVerificationModal({
       console.log('OTP verification response:', data)
 
       if (response.ok && data.otpValidate === 'otpFound') {
-        // Log auth/me URL
-        console.log('Auth/me URL:', `${API_BASE_URL}${AUTH_ME_ENDPOINT}`);
+        // Log auth/me URL and environment variables
+        console.log('Auth/me environment variables:', {
+          base: API_BASE_URL,
+          endpoint: AUTH_ME_ENDPOINT,
+          fullUrl: `${API_BASE_URL}${AUTH_ME_ENDPOINT}`
+        });
         
         // Call auth/me endpoint to get user details
-        const authMeResponse = await fetch(`${API_BASE_URL}${AUTH_ME_ENDPOINT}`, {
+        const authMeUrl = `${API_BASE_URL}${AUTH_ME_ENDPOINT}`;
+        console.log('Calling auth/me endpoint:', authMeUrl);
+        
+        const authMeResponse = await fetch(authMeUrl, {
           method: 'GET',
           headers: {
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${authToken}`
           }
         });
 
         if (!authMeResponse.ok) {
           const errorText = await authMeResponse.text();
-          console.error('Auth/me error:', errorText);
-          throw new Error('Failed to get user details');
+          console.error('Auth/me error response:', {
+            status: authMeResponse.status,
+            statusText: authMeResponse.statusText,
+            error: errorText,
+            url: authMeUrl
+          });
+          throw new Error(`Failed to get user details: ${authMeResponse.status} ${errorText}`);
         }
 
         const userData = await authMeResponse.json();
