@@ -107,6 +107,7 @@ export default function SignIn() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${data.authToken}`
             },
             body: JSON.stringify({
               email: signInDetails.email
