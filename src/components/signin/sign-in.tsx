@@ -99,6 +99,10 @@ export default function SignIn() {
 
         if (data.authToken) {
           setTempAuthData(data)
+          // Store auth token immediately
+          localStorage.setItem('authToken', data.authToken)
+          localStorage.setItem('delikaOnboardingId', data.delika_onboarding_id)
+          
           // Generate and send OTP
           const otpUrl = `${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SEND_OTP_ENDPOINT}`;
           console.log('Sending OTP to URL:', otpUrl);

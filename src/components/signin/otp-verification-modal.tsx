@@ -21,6 +21,7 @@ interface OTPVerificationModalProps {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const VERIFY_OTP_ENDPOINT = import.meta.env.VITE_VERIFY_OTP_ENDPOINT;
+const AUTH_ME_ENDPOINT = import.meta.env.VITE_AUTH_ME_ENDPOINT;
 
 export function OTPVerificationModal({
   isOpen,
@@ -39,6 +40,11 @@ export function OTPVerificationModal({
 
     setIsVerifying(true)
     try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        throw new Error('No auth token found');
+      }
+
       // Verify OTP using GET request
       const response = await fetch(
         `${API_BASE_URL}${VERIFY_OTP_ENDPOINT}?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}`, 
@@ -46,7 +52,7 @@ export function OTPVerificationModal({
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+            'Authorization': `Bearer ${authToken}`
           }
         }
       )
@@ -55,6 +61,24 @@ export function OTPVerificationModal({
       console.log('OTP verification response:', data)
 
       if (response.ok && data.otpValidate === 'otpFound') {
+        // Call auth/me endpoint to get user details
+        const authMeResponse = await fetch(`${API_BASE_URL}${AUTH_ME_ENDPOINT}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+
+        if (!authMeResponse.ok) {
+          throw new Error('Failed to get user details');
+        }
+
+        const userData = await authMeResponse.json();
+        console.log('Auth/me response:', userData);
+
+        // Store user data in localStorage if needed
+        localStorage.setItem('userData', JSON.stringify(userData));
+
         toast.success('OTP verified successfully')
         // Use Promise to handle the delay
         await new Promise(resolve => setTimeout(resolve, 1000))
