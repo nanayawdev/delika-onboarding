@@ -95,7 +95,7 @@ export default function SignIn() {
         if (data.authToken) {
           setTempAuthData(data)
           // Generate and send OTP
-          const otpUrl = `${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_SEND_OTP_ENDPOINT}`;
+          const otpUrl = 'https://api-server.krontiva.africa/api:uEBBwbSs/reset/password/send/otp/onboarding';
           console.log('Sending OTP to URL:', otpUrl);
           
           const otpResponse = await fetch(otpUrl, {
